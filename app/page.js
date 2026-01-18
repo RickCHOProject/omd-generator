@@ -11,6 +11,8 @@ export default function OMDGenerator() {
   const [parsed, setParsed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [labeling, setLabeling] = useState(false);
+  const [buyerTeaser, setBuyerTeaser] = useState('');
+  const [generatingTeaser, setGeneratingTeaser] = useState(false);
   
   const [formData, setFormData] = useState({
     address: '', city: '', state: '', zip: '',
@@ -153,6 +155,44 @@ export default function OMDGenerator() {
 
   const removePhoto = (id) => {
     setPhotos(photos.filter(p => p.id !== id));
+  };
+
+  const generateBuyerTeaser = async () => {
+    setGeneratingTeaser(true);
+    try {
+      const response = await fetch('/api/label-photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          generateTeaser: true,
+          city: formData.city,
+          state: formData.state,
+          beds: formData.beds,
+          baths: formData.baths
+        })
+      });
+      
+      if (response.ok) {
+        const { teaser } = await response.json();
+        if (teaser) {
+          setBuyerTeaser(teaser);
+          setGeneratingTeaser(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.log('Teaser generation failed');
+    }
+    // Fallback if API fails
+    const fallbacks = [
+      `Hey! Off-market in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still buying?`,
+      `New deal just hit - ${formData.city}, ${formData.state}. ${formData.beds} bed. You active?`,
+      `Solid opportunity in ${formData.city} - ${formData.beds}/${formData.baths}. Interested?`,
+      `Off-market alert - ${formData.city}, ${formData.state}. ${formData.beds}/${formData.baths}. Want details?`,
+      `Fresh one in ${formData.city} - ${formData.beds} bed, ${formData.baths} bath. Still in the market?`
+    ];
+    setBuyerTeaser(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+    setGeneratingTeaser(false);
   };
 
   // House Icon SVG Component
@@ -481,17 +521,62 @@ Reply if interested`;
       setTimeout(() => setCopied(false), 2000);
     };
 
+    const copyTeaser = () => {
+      navigator.clipboard.writeText(buyerTeaser);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
     return (
       <div style={{ minHeight: '100vh', background: '#1e293b', fontFamily: '"DM Sans", sans-serif' }}>
         <div style={{ padding: '12px 24px', background: '#0f172a', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button onClick={() => setMode('form')} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>← Edit</button>
-          <span style={{ color: '#94a3b8', fontSize: 14 }}>Text Blast (No Branding)</span>
-          <button onClick={copyTextBlast} style={{ padding: '8px 20px', background: copied ? '#16a34a' : '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{copied ? '✓ Copied!' : 'Copy Text'}</button>
+          <span style={{ color: '#94a3b8', fontSize: 14 }}>Text Outputs</span>
+          <div style={{ width: 80 }}></div>
         </div>
         <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-          <div style={{ width: 600, background: '#fff', borderRadius: 12, padding: 32, boxShadow: '0 25px 80px rgba(0,0,0,0.3)' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginBottom: 16 }}>Plain text for dispo partners:</div>
-            <pre style={{ fontFamily: 'monospace', fontSize: 14, lineHeight: 1.8, color: '#111827', whiteSpace: 'pre-wrap', background: '#f8fafc', padding: 20, borderRadius: 8, border: '1px solid #e2e8f0' }}>{textBlast}</pre>
+          <div style={{ width: 650 }}>
+            
+            {/* BUYER TEASER SECTION */}
+            <div style={{ background: '#fff', borderRadius: 12, padding: 28, marginBottom: 24, boxShadow: '0 25px 80px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', fontFamily: 'Montserrat, sans-serif' }}>Buyer Teaser</div>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>Initial text - no link, no details. Send first, link after they reply.</div>
+                </div>
+                <button onClick={generateBuyerTeaser} disabled={generatingTeaser} style={{ padding: '10px 20px', background: generatingTeaser ? '#94a3b8' : 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: generatingTeaser ? 'wait' : 'pointer' }}>
+                  {generatingTeaser ? 'Generating...' : '🎲 Generate'}
+                </button>
+              </div>
+              {buyerTeaser ? (
+                <div>
+                  <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12 }}>
+                    <p style={{ fontSize: 15, color: '#111827', margin: 0, lineHeight: 1.6 }}>{buyerTeaser}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={copyTeaser} style={{ padding: '8px 16px', background: copied ? '#16a34a' : '#3b82f6', border: 'none', borderRadius: 6, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{copied ? '✓ Copied!' : 'Copy'}</button>
+                    <button onClick={generateBuyerTeaser} style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', borderRadius: 6, color: '#374151', fontSize: 13, cursor: 'pointer' }}>Regenerate</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background: '#f8fafc', padding: 24, borderRadius: 8, border: '1px dashed #d1d5db', textAlign: 'center' }}>
+                  <p style={{ color: '#9ca3af', margin: 0 }}>Click "Generate" to create a randomized teaser</p>
+                </div>
+              )}
+            </div>
+
+            {/* TEXT BLAST SECTION */}
+            <div style={{ background: '#fff', borderRadius: 12, padding: 28, boxShadow: '0 25px 80px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', fontFamily: 'Montserrat, sans-serif' }}>Text Blast (Dispo Partners)</div>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>Full details, no branding - for other disposition houses</div>
+                </div>
+                <button onClick={copyTextBlast} style={{ padding: '10px 20px', background: copied ? '#16a34a' : '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{copied ? '✓ Copied!' : 'Copy Text'}</button>
+              </div>
+              <pre style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 1.7, color: '#111827', whiteSpace: 'pre-wrap', background: '#f8fafc', padding: 20, borderRadius: 8, border: '1px solid #e2e8f0', margin: 0 }}>{textBlast}</pre>
+            </div>
+
           </div>
         </div>
       </div>
