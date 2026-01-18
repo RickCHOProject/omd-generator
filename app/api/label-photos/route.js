@@ -2,7 +2,50 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const { images, count } = await request.json();
+    const body = await request.json();
+    
+    // Handle buyer teaser generation
+    if (body.generateTeaser) {
+      const { city, state, beds, baths } = body;
+      
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 150,
+          messages: [
+            {
+              role: 'user',
+              content: `Generate a short, casual text message teaser for a real estate deal. The message should:
+- Be 1-2 sentences max
+- Mention the city (${city}, ${state}) and beds/baths (${beds}/${baths})
+- NOT include any link, price, address, or detailed info
+- End with a casual question like "Still buying?", "You active?", "Interested?", "Want details?", "Still in the market?"
+- Sound natural and conversational, not salesy
+- Vary the opening - could start with "Hey!", "New deal", "Off-market", "Fresh one", "Solid opportunity", etc.
+
+Just respond with the message text, nothing else.`
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Anthropic API error');
+      }
+
+      const data = await response.json();
+      const teaser = data.content[0].text.trim();
+      return NextResponse.json({ teaser });
+    }
+    
+    // Handle photo labeling
+    const { images, count } = body;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -67,7 +110,7 @@ No explanation, just the JSON array.`
 
     return NextResponse.json({ labels });
   } catch (error) {
-    console.error('Label error:', error);
-    return NextResponse.json({ labels: [] }, { status: 500 });
+    console.error('API error:', error);
+    return NextResponse.json({ labels: [], teaser: null }, { status: 500 });
   }
 }
