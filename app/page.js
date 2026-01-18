@@ -1,162 +1,102 @@
 'use client';
 import { useState } from 'react';
 
+const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
+
+// House Icon Component
+const HouseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+  </svg>
+);
+
 export default function OMDGenerator() {
-  const [mode, setMode] = useState('form');
-  const [viewMode, setViewMode] = useState('desktop');
-  const [outputType, setOutputType] = useState('page');
-  const [activeImg, setActiveImg] = useState(0);
-  const [photos, setPhotos] = useState([]);
   const [rawInput, setRawInput] = useState('');
-  const [parsed, setParsed] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [labeling, setLabeling] = useState(false);
-  const [buyerTeaser, setBuyerTeaser] = useState('');
-  const [generatingTeaser, setGeneratingTeaser] = useState(false);
-  const [dealUrl, setDealUrl] = useState('');
-  const [publishing, setPublishing] = useState(false);
-  
   const [formData, setFormData] = useState({
     address: '', city: '', state: '', zip: '',
-    askingPrice: '', arv: '', beds: '', baths: '', sqft: '', yearBuilt: '',
-    occupancy: 'Vacant', access: 'Easy Access',
-    coe: '', emd: '', hoa: '', conditionNotes: '', phone: ''
+    askingPrice: '', arv: '', beds: '', baths: '',
+    sqft: '', yearBuilt: '', occupancy: '', access: '',
+    coe: '', emd: '', hoa: '', conditionNotes: '', phone: '480-266-3864'
   });
+  const [photos, setPhotos] = useState([]);
+  const [previewMode, setPreviewMode] = useState(null);
+  const [dealUrl, setDealUrl] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [buyerTeaser, setBuyerTeaser] = useState('');
+  const [generatingTeaser, setGeneratingTeaser] = useState(false);
 
-  const photoLabels = ['Exterior - Front', 'Exterior - Back', 'Exterior - Side', 'Living Room', 'Kitchen', 'Dining Room', 'Master Bedroom', 'Bedroom 2', 'Bedroom 3', 'Bathroom 1', 'Bathroom 2', 'Basement', 'Garage', 'Backyard', 'Pool', 'Roof', 'HVAC', 'Water Heater', 'Damage', 'Other'];
-
-  const parseRawInput = () => {
-    const text = rawInput;
-    const newData = { ...formData };
+  const parseInput = () => {
+    const lines = rawInput.split('\n');
+    const data = { ...formData };
     
-    const addressMatch = text.match(/Address:\s*([^,]+),\s*([^,]+),\s*([A-Z]{2})\s*(\d{5})?/i);
-    if (addressMatch) {
-      newData.address = addressMatch[1].trim();
-      newData.city = addressMatch[2].trim();
-      newData.state = addressMatch[3].trim();
-      newData.zip = addressMatch[4] ? addressMatch[4].trim() : '';
-    }
-    
-    const dealMatch = text.match(/New Deal\s*[-–]\s*([^,\n]+),\s*([A-Z]{2})/i);
-    if (dealMatch && !newData.city) {
-      newData.city = dealMatch[1].trim();
-      newData.state = dealMatch[2].trim();
-    }
-
-    const askingMatch = text.match(/Asking\s*(?:Price)?:\s*\$?([\d,]+)/i);
-    if (askingMatch) newData.askingPrice = askingMatch[1].replace(/,/g, '');
-
-    const arvMatch = text.match(/(?:Estimated\s*)?ARV:\s*\$?([\d,]+)/i);
-    if (arvMatch) newData.arv = arvMatch[1].replace(/,/g, '');
-
-    const bbMatch = text.match(/Beds?\/Baths?:\s*(\d+)\s*\/\s*(\d+)/i) || text.match(/(\d+)\/(\d+)/);
-    if (bbMatch) { newData.beds = bbMatch[1]; newData.baths = bbMatch[2]; }
-
-    const sqftMatch = text.match(/(?:Living\s*Area\s*Size|Sq\s*Ft):\s*([\d,]+)/i) || text.match(/([\d,]+)\s*\(?Sq\.?\s*Ft/i);
-    if (sqftMatch) newData.sqft = sqftMatch[1].replace(/,/g, '');
-
-    const yearMatch = text.match(/Year\s*Built:\s*(\d{4})/i);
-    if (yearMatch) newData.yearBuilt = yearMatch[1];
-
-    const occMatch = text.match(/Occupancy[^:]*:\s*([^\n,]+)/i);
-    if (occMatch) {
-      const o = occMatch[1].toLowerCase();
-      if (o.includes('vacant')) newData.occupancy = 'Vacant';
-      else if (o.includes('owner')) newData.occupancy = 'Owner Occupied';
-      else if (o.includes('tenant')) newData.occupancy = 'Tenant Occupied';
-    }
-
-    const coeMatch = text.match(/COE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
-    if (coeMatch) {
-      const p = coeMatch[1].split('/');
-      newData.coe = `${p[2]}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`;
-    }
-
-    const emdMatch = text.match(/EMD:\s*\$?([\d,]+)/i);
-    if (emdMatch) newData.emd = emdMatch[1].replace(/,/g, '');
-
-    const hoaMatch = text.match(/HOA:\s*([^\n]+)/i);
-    if (hoaMatch) newData.hoa = hoaMatch[1].trim();
-
-    const notesMatch = text.match(/Notes?:\s*([\s\S]*?)$/i);
-    if (notesMatch) newData.conditionNotes = notesMatch[1].trim();
-
-    setFormData(newData);
-    setParsed(true);
-  };
-
-  const formatCurrency = (num) => num ? '$' + Number(num).toLocaleString() : '$0';
-  const calculateSpread = () => (Number(formData.arv) || 0) - (Number(formData.askingPrice) || 0);
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-    });
-  };
-
-  const autoLabelPhotos = async (newPhotos) => {
-    setLabeling(true);
-    
-    try {
-      const images = await Promise.all(newPhotos.map(async (p) => ({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: p.file.type,
-          data: await fileToBase64(p.file)
-        }
-      })));
-
-      const response = await fetch('/api/label-photos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images, count: newPhotos.length })
-      });
-
-      if (response.ok) {
-        const { labels } = await response.json();
-        if (labels && labels.length === newPhotos.length) {
-          const labeled = newPhotos.map((p, i) => ({ ...p, label: labels[i] || 'Other' }));
-          const sorted = [...labeled].sort((a, b) => {
-            if (a.label.includes('Front')) return -1;
-            if (b.label.includes('Front')) return 1;
-            return 0;
-          });
-          setPhotos(sorted);
-          setLabeling(false);
-          return;
-        }
+    lines.forEach(line => {
+      const lower = line.toLowerCase();
+      if (lower.includes('address:')) {
+        const full = line.split(':').slice(1).join(':').trim();
+        const parts = full.split(',').map(p => p.trim());
+        data.address = parts[0] || '';
+        data.city = parts[1] || '';
+        const stateZip = (parts[2] || '').split(' ').filter(Boolean);
+        data.state = stateZip[0] || '';
+        data.zip = stateZip[1] || '';
       }
-    } catch (err) {
-      console.log('Auto-label failed, using defaults');
-    }
+      else if (lower.includes('asking price:') || lower.includes('asking:')) {
+        data.askingPrice = line.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || '';
+      }
+      else if (lower.includes('arv:') || lower.includes('estimated arv:')) {
+        data.arv = line.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || '';
+      }
+      else if (lower.includes('beds/baths:') || lower.includes('bed/bath:')) {
+        const match = line.match(/(\d+)\s*\/\s*(\d+)/);
+        if (match) { data.beds = match[1]; data.baths = match[2]; }
+      }
+      else if (lower.includes('sq ft:') || lower.includes('sqft:') || lower.includes('living area')) {
+        data.sqft = line.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || '';
+      }
+      else if (lower.includes('year built:')) {
+        data.yearBuilt = line.match(/\d{4}/)?.[0] || '';
+      }
+      else if (lower.includes('occupancy')) {
+        data.occupancy = line.split(':').slice(1).join(':').trim();
+      }
+      else if (lower.includes('coe:') || lower.includes('close of escrow')) {
+        data.coe = line.split(':').slice(1).join(':').trim();
+      }
+      else if (lower.includes('emd:')) {
+        data.emd = line.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || '';
+      }
+      else if (lower.includes('hoa:')) {
+        data.hoa = line.split(':').slice(1).join(':').trim();
+      }
+      else if (lower.includes('notes:') || lower.includes('condition:')) {
+        data.conditionNotes = line.split(':').slice(1).join(':').trim();
+      }
+    });
     
-    setPhotos(newPhotos);
-    setLabeling(false);
+    setFormData(data);
   };
 
-  const handlePhotoUpload = async (e) => {
+  const handlePhotoUpload = (e) => {
     const files = Array.from(e.target.files);
-    const newPhotos = files.map((file, i) => ({
-      id: Date.now() + i,
+    const newPhotos = files.map(file => ({
       file,
       url: URL.createObjectURL(file),
-      label: i === 0 ? 'Exterior - Front' : 'Other'
+      label: 'Other'
     }));
-    
-    await autoLabelPhotos(newPhotos);
+    setPhotos([...photos, ...newPhotos]);
   };
 
-  const updateLabel = (id, label) => {
-    setPhotos(photos.map(p => p.id === id ? { ...p, label } : p));
+  const labelPhoto = (index, label) => {
+    const updated = [...photos];
+    updated[index].label = label;
+    setPhotos(updated);
   };
 
-  const removePhoto = (id) => {
-    setPhotos(photos.filter(p => p.id !== id));
+  const removePhoto = (index) => {
+    const updated = photos.filter((_, i) => i !== index);
+    setPhotos(updated);
   };
 
   const generateBuyerTeaser = async () => {
@@ -166,591 +106,507 @@ export default function OMDGenerator() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          generateTeaser: true,
+          type: 'teaser',
           city: formData.city,
           state: formData.state,
           beds: formData.beds,
           baths: formData.baths
         })
       });
-      
-      if (response.ok) {
-        const { teaser } = await response.json();
-        if (teaser) {
-          setBuyerTeaser(teaser);
-          setGeneratingTeaser(false);
-          return;
-        }
-      }
-    } catch (err) {
-      console.log('Teaser generation failed');
+      const data = await response.json();
+      setBuyerTeaser(data.teaser || `Off-market in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still buying?`);
+    } catch (error) {
+      const teasers = [
+        `Hey! Off-market in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still buying?`,
+        `New deal just hit - ${formData.city}, ${formData.state}. ${formData.beds} bed. You active?`,
+        `Off-market in ${formData.city} - ${formData.beds}/${formData.baths}. Interested?`,
+        `Got one in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still looking?`
+      ];
+      setBuyerTeaser(teasers[Math.floor(Math.random() * teasers.length)]);
     }
-    // Fallback if API fails
-    const fallbacks = [
-      `Hey! Off-market in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still buying?`,
-      `New deal just hit - ${formData.city}, ${formData.state}. ${formData.beds} bed. You active?`,
-      `Solid opportunity in ${formData.city} - ${formData.beds}/${formData.baths}. Interested?`,
-      `Off-market alert - ${formData.city}, ${formData.state}. ${formData.beds}/${formData.baths}. Want details?`,
-      `Fresh one in ${formData.city} - ${formData.beds} bed, ${formData.baths} bath. Still in the market?`
-    ];
-    setBuyerTeaser(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
     setGeneratingTeaser(false);
   };
 
-  const publishDeal = () => {
+  const uploadPhotosToSupabase = async (slug) => {
+    const uploadedUrls = [];
+    
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      if (!photo.file) continue;
+      
+      const fileName = `${slug}/${i}-${photo.label.toLowerCase().replace(/\s+/g, '-')}.jpg`;
+      
+      const response = await fetch(`${SUPABASE_URL}/storage/v1/object/deal-photos/${fileName}`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': photo.file.type
+        },
+        body: photo.file
+      });
+      
+      if (response.ok) {
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/deal-photos/${fileName}`;
+        uploadedUrls.push({ url: publicUrl, label: photo.label });
+      }
+    }
+    
+    return uploadedUrls;
+  };
+
+  const publishDeal = async () => {
     setPublishing(true);
     try {
-      // Create deal data object (without photo file objects, just URLs)
+      // Generate slug from address
+      const slug = formData.address
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 30) + '-' + Math.random().toString(36).substring(2, 6);
+      
+      // Upload photos first
+      const uploadedPhotos = await uploadPhotosToSupabase(slug);
+      
+      // Prepare deal data
       const dealData = {
         ...formData,
-        photos: photos.map(p => ({ url: p.url, label: p.label }))
+        photos: uploadedPhotos
       };
       
-      // Encode as base64
-      const encoded = btoa(JSON.stringify(dealData));
+      // Save to Supabase
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/deals`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          slug: slug,
+          data: dealData
+        })
+      });
       
-      // Create URL
-      const baseUrl = window.location.origin;
-      const url = `${baseUrl}/d?d=${encoded}`;
-      
-      setDealUrl(url);
-    } catch (err) {
-      console.error('Publish error:', err);
+      if (response.ok) {
+        const url = `https://deals.offmarketdaily.com/d/${slug}`;
+        setDealUrl(url);
+      } else {
+        const err = await response.text();
+        console.error('Failed to save deal:', err);
+        alert('Failed to publish deal. Check console.');
+      }
+    } catch (error) {
+      console.error('Error publishing:', error);
       alert('Error publishing deal');
     }
     setPublishing(false);
   };
 
-  const copyDealUrl = () => {
-    navigator.clipboard.writeText(dealUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const formatPrice = (num) => {
+    if (!num) return '';
+    return Number(num).toLocaleString();
   };
 
-  // House Icon SVG Component
-  const HouseIcon = ({ size = 24 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-      <polyline points="9 22 9 12 15 12 15 22"></polyline>
-    </svg>
-  );
+  const spread = formData.arv && formData.askingPrice 
+    ? Number(formData.arv) - Number(formData.askingPrice) 
+    : 0;
 
-  // ============ EMAIL HTML ============
-  const emailHTML = `<!DOCTYPE html>
+  const generateTextBlast = () => {
+    return `New Deal - ${formData.city}, ${formData.state}
+
+Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}
+Asking Price: $${formatPrice(formData.askingPrice)}
+Estimated ARV: $${formatPrice(formData.arv)}
+Beds/Baths: ${formData.beds}/${formData.baths}
+Living Area Size: ${formatPrice(formData.sqft)} (Sq. Ft)
+Year Built: ${formData.yearBuilt}
+Occupancy Status at Closing: ${formData.occupancy || 'TBD'}
+Access: ${formData.access || 'Easy Access'}
+COE: ${formData.coe}
+EMD: $${formatPrice(formData.emd)}
+${dealUrl ? `Link: ${dealUrl}` : ''}
+
+${spread > 80000 ? `Over $${formatPrice(spread)} spread potential here.` : `$${formatPrice(spread)} spread on this one.`}
+
+Notes:
+${formData.conditionNotes}
+
+Reply if interested`;
+  };
+
+  const generateEmailHTML = () => {
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Deal - ${formData.city}, ${formData.state}</title>
 </head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;background:#fff;">
+<body style="margin:0;padding:0;background-color:#f5f5f5;font-family:Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;">
+    <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:white;padding:30px;text-align:center;">
+      <h1 style="margin:0;font-size:28px;">New Deal - ${formData.city}, ${formData.state}</h1>
+      <p style="margin:10px 0 0;opacity:0.9;font-size:16px;">${formData.address}</p>
+    </div>
     
-    <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;">
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td>
-            <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="width:36px;height:36px;background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:8px;text-align:center;vertical-align:middle;">
-                  <img src="https://img.icons8.com/ios-filled/50/ffffff/home.png" width="20" height="20" style="vertical-align:middle;" alt="home" />
-                </td>
-                <td style="padding-left:10px;font-weight:bold;font-size:15px;color:#111827;">OffMarket Daily</td>
-              </tr>
-            </table>
-          </td>
-          <td align="right">
-            <span style="background:#dcfce7;color:#166534;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;">Exclusive Deal</span>
-          </td>
-        </tr>
-      </table>
-    </div>
-
-    <div style="background:#1e40af;padding:28px;text-align:center;">
-      <div style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">New Deal in ${formData.city}, ${formData.state}</div>
-      <div style="color:#fff;font-size:38px;font-weight:bold;">${formatCurrency(formData.askingPrice)}</div>
-      <div style="margin-top:20px;">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td width="50%" align="center" style="border-right:1px solid rgba(255,255,255,0.2);padding-right:16px;">
-              <div style="color:rgba(255,255,255,0.7);font-size:11px;margin-bottom:2px;">ARV</div>
-              <div style="color:#fff;font-size:22px;font-weight:bold;">${formatCurrency(formData.arv)}</div>
-            </td>
-            <td width="50%" align="center" style="padding-left:16px;">
-              <div style="color:rgba(255,255,255,0.7);font-size:11px;margin-bottom:2px;">Spread</div>
-              <div style="color:#86efac;font-size:22px;font-weight:bold;">${formatCurrency(calculateSpread())}</div>
-            </td>
-          </tr>
-        </table>
+    <div style="background:linear-gradient(135deg,#00b894 0%,#00cec9 100%);padding:25px;text-align:center;">
+      <div style="font-size:14px;opacity:0.9;color:white;">ASKING PRICE</div>
+      <div style="font-size:42px;font-weight:bold;color:white;">$${formatPrice(formData.askingPrice)}</div>
+      <div style="margin-top:15px;display:inline-block;background:rgba(255,255,255,0.2);padding:8px 20px;border-radius:20px;">
+        <span style="color:white;font-size:14px;">ARV: $${formatPrice(formData.arv)} | Spread: $${formatPrice(spread)}</span>
       </div>
     </div>
-
-    <div style="padding:24px;background:#f8fafc;">
-      <table width="100%" cellpadding="0" cellspacing="0">
+    
+    <div style="padding:30px;">
+      <h2 style="color:#1a1a2e;border-bottom:2px solid #00b894;padding-bottom:10px;">Property Details</h2>
+      <table style="width:100%;border-collapse:collapse;">
         <tr>
-          <td width="25%" align="center" style="padding:12px;">
-            <div style="color:#64748b;font-size:12px;margin-bottom:4px;">Beds</div>
-            <div style="color:#111827;font-size:24px;font-weight:bold;">${formData.beds || '-'}</div>
-          </td>
-          <td width="25%" align="center" style="padding:12px;">
-            <div style="color:#64748b;font-size:12px;margin-bottom:4px;">Baths</div>
-            <div style="color:#111827;font-size:24px;font-weight:bold;">${formData.baths || '-'}</div>
-          </td>
-          <td width="25%" align="center" style="padding:12px;">
-            <div style="color:#64748b;font-size:12px;margin-bottom:4px;">Sq Ft</div>
-            <div style="color:#111827;font-size:24px;font-weight:bold;">${formData.sqft ? Number(formData.sqft).toLocaleString() : '-'}</div>
-          </td>
-          <td width="25%" align="center" style="padding:12px;">
-            <div style="color:#64748b;font-size:12px;margin-bottom:4px;">Year</div>
-            <div style="color:#111827;font-size:24px;font-weight:bold;">${formData.yearBuilt || '-'}</div>
-          </td>
+          <td style="padding:12px 0;border-bottom:1px solid #eee;color:#666;">Beds/Baths</td>
+          <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">${formData.beds}/${formData.baths}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 0;border-bottom:1px solid #eee;color:#666;">Square Feet</td>
+          <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">${formatPrice(formData.sqft)}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 0;border-bottom:1px solid #eee;color:#666;">Year Built</td>
+          <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">${formData.yearBuilt}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 0;border-bottom:1px solid #eee;color:#666;">COE</td>
+          <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">${formData.coe}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 0;color:#666;">EMD</td>
+          <td style="padding:12px 0;text-align:right;font-weight:bold;">$${formatPrice(formData.emd)}</td>
         </tr>
       </table>
-    </div>
-
-    <div style="padding:24px;">
-      <div style="font-size:16px;font-weight:bold;color:#111827;margin-bottom:16px;">Deal Terms</div>
-      <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-        <tr><td style="padding:8px 0;color:#64748b;">COE</td><td align="right" style="padding:8px 0;color:#374151;font-weight:600;">${formData.coe ? new Date(formData.coe).toLocaleDateString() : 'TBD'}</td></tr>
-        <tr><td style="padding:8px 0;color:#64748b;border-top:1px solid #e5e7eb;">EMD</td><td align="right" style="padding:8px 0;color:#374151;font-weight:600;border-top:1px solid #e5e7eb;">${formData.emd ? formatCurrency(formData.emd) : 'TBD'}</td></tr>
-        <tr><td style="padding:8px 0;color:#64748b;border-top:1px solid #e5e7eb;">Occupancy</td><td align="right" style="padding:8px 0;color:#374151;font-weight:600;border-top:1px solid #e5e7eb;">${formData.occupancy}</td></tr>
-      </table>
-    </div>
-
-    ${formData.conditionNotes ? `<div style="padding:0 24px 24px;">
-      <div style="font-size:16px;font-weight:bold;color:#111827;margin-bottom:12px;">Condition Notes</div>
-      <div style="color:#475569;font-size:14px;line-height:1.6;">${formData.conditionNotes}</div>
-    </div>` : ''}
-
-    <div style="padding:24px;">
-      <a href="${dealUrl || '{{DEAL_LINK}}'}" style="display:block;text-align:center;background:#16a34a;color:#fff;padding:18px 24px;border-radius:12px;text-decoration:none;font-size:16px;font-weight:bold;">View Full Details →</a>
-      <div style="text-align:center;margin-top:12px;color:#64748b;font-size:14px;">Or call/text: <span style="font-weight:600;color:#374151;">${formData.phone}</span></div>
-    </div>
-
-    <div style="padding:24px;background:#f1f5f9;border-top:1px solid #e2e8f0;">
-      <div style="text-align:center;margin-bottom:16px;"><span style="font-weight:bold;font-size:13px;color:#374151;">OffMarket Daily</span></div>
-      <div style="font-size:10px;color:#64748b;line-height:1.6;">
-        <p style="margin:0 0 8px;">Copyright © OffMarket Daily. All rights reserved.</p>
-        <p style="margin:0 0 8px;">House is being sold as-is. ${formatCurrency(formData.emd)} Non-Refundable EMD due by NOON next day. Cash or hard money only.</p>
-        <p style="margin:0;">Buyer must do their own due diligence. ARV is an opinion of value.</p>
+      
+      <div style="margin-top:25px;padding:20px;background:#f8f9fa;border-radius:8px;">
+        <h3 style="margin:0 0 10px;color:#1a1a2e;">Condition Notes</h3>
+        <p style="margin:0;color:#666;line-height:1.6;">${formData.conditionNotes}</p>
+      </div>
+      
+      <div style="text-align:center;margin-top:30px;">
+        <a href="${dealUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#00b894 0%,#00cec9 100%);color:white;padding:15px 40px;text-decoration:none;border-radius:30px;font-weight:bold;font-size:16px;">View Full Details</a>
       </div>
     </div>
-
+    
+    <div style="background:#1a1a2e;color:white;padding:20px;text-align:center;">
+      <p style="margin:0;opacity:0.8;">Interested? Reply to this email or call/text ${formData.phone}</p>
+    </div>
   </div>
 </body>
 </html>`;
+  };
 
-  // ============ TEXT BLAST ============
-  const textBlast = `New Deal - ${formData.city}, ${formData.state}
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    alert('Copied to clipboard!');
+  };
 
-Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}
-Asking Price: ${formatCurrency(formData.askingPrice)}
-Estimated ARV: ${formatCurrency(formData.arv)}
-Beds/Baths: ${formData.beds}/${formData.baths}
-Living Area Size: ${formData.sqft ? Number(formData.sqft).toLocaleString() : '-'} (Sq. Ft)
-Year Built: ${formData.yearBuilt || 'TBD'}
-Occupancy Status at Closing: ${formData.occupancy}
-Access: ${formData.access}
-COE: ${formData.coe ? new Date(formData.coe).toLocaleDateString() : 'TBD'}
-EMD: ${formatCurrency(formData.emd)}
-${formData.hoa ? `HOA: ${formData.hoa}` : ''}
-Pictures Link: [LINK]
-
-${calculateSpread() >= 80000 ? `Over ${formatCurrency(calculateSpread())} spread potential here.` : `${formatCurrency(calculateSpread())} spread - solid margin on this one.`}
-
-Notes:
-${formData.conditionNotes || 'Contact for details'}
-
-Reply if interested`;
-
-  // ============ FORM MODE ============
-  if (mode === 'form') {
+  // FORM VIEW
+  if (!previewMode) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: '"DM Sans", sans-serif', padding: 24 }}>
-        {/* HEADER WITH HOUSE ICON AND EXCLUSIVE DEAL BADGE */}
-        <div style={{ maxWidth: 700, margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <HouseIcon size={24} />
+      <div style={{ minHeight: '100vh', background: '#f8f9fa', padding: 20 }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <div style={{ background: '#1a1a2e', color: 'white', padding: '20px 30px', borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <HouseIcon />
+              <span style={{ fontWeight: 700, fontSize: 18 }}>OMD Generator</span>
             </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 18, color: '#111827', fontFamily: 'Montserrat, sans-serif' }}>OffMarket Daily</div>
-              <div style={{ fontSize: 13, color: '#6b7280' }}>Deal Page Generator</div>
-            </div>
-          </div>
-          <div style={{ background: '#dcfce7', color: '#166534', padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600 }}>Exclusive Deal</div>
-        </div>
-
-        <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <div style={{ marginBottom: 24, background: '#fff', padding: 28, borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: parsed ? '1px solid #e5e7eb' : '2px solid #3b82f6' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: parsed ? '#111827' : '#1e40af', marginBottom: 16, fontFamily: 'Montserrat, sans-serif', display: 'flex', alignItems: 'center', gap: 8 }}>
-              📋 Paste Deal Info
-              {parsed && <span style={{ fontSize: 12, fontWeight: 500, color: '#16a34a', background: '#dcfce7', padding: '4px 8px', borderRadius: 4 }}>✓ Parsed</span>}
-            </div>
-            <textarea value={rawInput} onChange={(e) => { setRawInput(e.target.value); setParsed(false); }} placeholder="Paste everything here..." style={{ width: '100%', minHeight: 160, padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }} />
-            <button onClick={parseRawInput} style={{ width: '100%', marginTop: 16, padding: '14px 24px', background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', border: 'none', borderRadius: 10, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'Montserrat, sans-serif' }}>Parse Deal Info →</button>
+            <span style={{ background: '#00b894', padding: '4px 12px', borderRadius: 20, fontSize: 12 }}>Exclusive Deal</span>
           </div>
 
-          {parsed && (
-            <div style={{ marginBottom: 24, background: '#fff', padding: 28, borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 20, fontFamily: 'Montserrat, sans-serif' }}>Review & Edit</div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Street Address</label>
-                  <input name="address" value={formData.address} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>City</label>
-                  <input name="city" value={formData.city} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>State</label>
-                    <input name="state" value={formData.state} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Zip</label>
-                    <input name="zip" value={formData.zip} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                  </div>
-                </div>
-              </div>
+          <div style={{ background: 'white', padding: 30, borderRadius: '0 0 12px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <h3>Paste Deal Info</h3>
+            <textarea
+              value={rawInput}
+              onChange={(e) => setRawInput(e.target.value)}
+              placeholder="Paste your deal details here..."
+              style={{ width: '100%', height: 150, padding: 15, border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical' }}
+            />
+            <button onClick={parseInput} style={{ marginTop: 10, background: '#00b894', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+              Parse Deal Info
+            </button>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Asking Price</label>
-                  <input name="askingPrice" value={formData.askingPrice} onChange={handleChange} placeholder="350000" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>ARV</label>
-                  <input name="arv" value={formData.arv} onChange={handleChange} placeholder="500000" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Beds</label>
-                  <input name="beds" value={formData.beds} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Baths</label>
-                  <input name="baths" value={formData.baths} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Sq Ft</label>
-                  <input name="sqft" value={formData.sqft} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Year Built</label>
-                  <input name="yearBuilt" value={formData.yearBuilt} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Occupancy</label>
-                  <select name="occupancy" value={formData.occupancy} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, background: '#fff', boxSizing: 'border-box' }}>
-                    <option>Vacant</option>
-                    <option>Owner Occupied</option>
-                    <option>Tenant Occupied</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Access</label>
-                  <select name="access" value={formData.access} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, background: '#fff', boxSizing: 'border-box' }}>
-                    <option>Easy Access</option>
-                    <option>Appointment Only</option>
-                    <option>Lockbox</option>
-                    <option>Contact for Access</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>COE (Close Date)</label>
-                  <input type="date" name="coe" value={formData.coe} onChange={handleChange} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>EMD</label>
-                  <input name="emd" value={formData.emd} onChange={handleChange} placeholder="7000" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>HOA (if any)</label>
-                <input name="hoa" value={formData.hoa} onChange={handleChange} placeholder="N/A or amount" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Condition Notes</label>
-                <textarea name="conditionNotes" value={formData.conditionNotes} onChange={handleChange} style={{ width: '100%', minHeight: 100, padding: 14, border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
-              </div>
-            </div>
-          )}
-
-          <div style={{ marginBottom: 24, background: '#fff', padding: 28, borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 16, fontFamily: 'Montserrat, sans-serif' }}>📷 Photos</div>
-            <div onClick={() => document.getElementById('photoInput').click()} style={{ border: '2px dashed #d1d5db', borderRadius: 12, padding: 40, textAlign: 'center', cursor: 'pointer', background: '#fafafa' }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#374151' }}>{labeling ? 'Labeling photos...' : 'Click to upload photos'}</div>
-              <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>Auto-labeled & sorted (front first)</div>
-            </div>
-            <input id="photoInput" type="file" multiple accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
-            
-            {photos.length > 0 && (
-              <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-                {photos.map((p) => (
-                  <div key={p.id} style={{ position: 'relative' }}>
-                    <img src={p.url} style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 8 }} />
-                    <select value={p.label} onChange={(e) => updateLabel(p.id, e.target.value)} style={{ width: '100%', marginTop: 6, padding: 6, fontSize: 11, border: '1px solid #e5e7eb', borderRadius: 4 }}>
-                      {photoLabels.map(l => <option key={l}>{l}</option>)}
-                    </select>
-                    <button onClick={() => removePhoto(p.id)} style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', color: '#fff', fontSize: 12, cursor: 'pointer' }}>×</button>
+            <div style={{ marginTop: 30 }}>
+              <h3>Deal Details</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+                {Object.entries(formData).filter(([key]) => key !== 'conditionNotes').map(([key, value]) => (
+                  <div key={key}>
+                    <label style={{ display: 'block', marginBottom: 5, fontWeight: 500, color: '#666', textTransform: 'capitalize' }}>
+                      {key.replace(/([A-Z])/g, ' $1')}
+                    </label>
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                      style={{ width: '100%', padding: 10, border: '1px solid #ddd', borderRadius: 6 }}
+                    />
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-
-          <div style={{ marginBottom: 24, background: '#fff', padding: 28, borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Your Phone (for CTA)</label>
-            <input name="phone" value={formData.phone} onChange={handleChange} placeholder="(470) 555-1234" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <button onClick={() => { setOutputType('page'); setMode('preview'); }} style={{ padding: '16px 20px', background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Montserrat, sans-serif' }}>OMD Page →</button>
-            <button onClick={() => { setOutputType('email'); setMode('preview'); }} style={{ padding: '16px 20px', background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Montserrat, sans-serif' }}>OMD Email →</button>
-            <button onClick={() => { setOutputType('text'); setMode('preview'); }} style={{ padding: '16px 20px', background: '#475569', border: 'none', borderRadius: 12, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Montserrat, sans-serif' }}>Text Blast →</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ============ EMAIL PREVIEW ============
-  if (mode === 'preview' && outputType === 'email') {
-    const copyHTML = () => {
-      navigator.clipboard.writeText(emailHTML);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-
-    return (
-      <div style={{ minHeight: '100vh', background: '#1e293b', fontFamily: '"DM Sans", sans-serif' }}>
-        <div style={{ padding: '12px 24px', background: '#0f172a', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => setMode('form')} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>← Edit</button>
-          <span style={{ color: '#94a3b8', fontSize: 14 }}>Email Template</span>
-          <button onClick={copyHTML} style={{ padding: '8px 20px', background: copied ? '#16a34a' : '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{copied ? '✓ Copied!' : 'Copy HTML'}</button>
-        </div>
-        <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-          <div style={{ width: 620, background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 25px 80px rgba(0,0,0,0.3)' }}>
-            <div dangerouslySetInnerHTML={{ __html: emailHTML }} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ============ TEXT BLAST PREVIEW ============
-  if (mode === 'preview' && outputType === 'text') {
-    const copyTextBlast = () => {
-      navigator.clipboard.writeText(textBlast);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-
-    const copyTeaser = () => {
-      navigator.clipboard.writeText(buyerTeaser);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-
-    return (
-      <div style={{ minHeight: '100vh', background: '#1e293b', fontFamily: '"DM Sans", sans-serif' }}>
-        <div style={{ padding: '12px 24px', background: '#0f172a', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => setMode('form')} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>← Edit</button>
-          <span style={{ color: '#94a3b8', fontSize: 14 }}>Text Outputs</span>
-          <div style={{ width: 80 }}></div>
-        </div>
-        <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-          <div style={{ width: 650 }}>
-            
-            {/* BUYER TEASER SECTION */}
-            <div style={{ background: '#fff', borderRadius: 12, padding: 28, marginBottom: 24, boxShadow: '0 25px 80px rgba(0,0,0,0.3)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', fontFamily: 'Montserrat, sans-serif' }}>Buyer Teaser</div>
-                  <div style={{ fontSize: 13, color: '#64748b' }}>Initial text - no link, no details. Send first, link after they reply.</div>
-                </div>
-                <button onClick={generateBuyerTeaser} disabled={generatingTeaser} style={{ padding: '10px 20px', background: generatingTeaser ? '#94a3b8' : 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: generatingTeaser ? 'wait' : 'pointer' }}>
-                  {generatingTeaser ? 'Generating...' : '🎲 Generate'}
-                </button>
+              <div style={{ marginTop: 15 }}>
+                <label style={{ display: 'block', marginBottom: 5, fontWeight: 500, color: '#666' }}>Condition Notes</label>
+                <textarea
+                  value={formData.conditionNotes}
+                  onChange={(e) => setFormData({ ...formData, conditionNotes: e.target.value })}
+                  style={{ width: '100%', height: 80, padding: 10, border: '1px solid #ddd', borderRadius: 6 }}
+                />
               </div>
-              {buyerTeaser ? (
-                <div>
-                  <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12 }}>
-                    <p style={{ fontSize: 15, color: '#111827', margin: 0, lineHeight: 1.6 }}>{buyerTeaser}</p>
+            </div>
+
+            <div style={{ marginTop: 30 }}>
+              <h3>Photos</h3>
+              <input type="file" multiple accept="image/*" onChange={handlePhotoUpload} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 15 }}>
+                {photos.map((photo, index) => (
+                  <div key={index} style={{ position: 'relative' }}>
+                    <img src={photo.url} alt="" style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 8 }} />
+                    <select
+                      value={photo.label}
+                      onChange={(e) => labelPhoto(index, e.target.value)}
+                      style={{ width: '100%', marginTop: 5, padding: 5, fontSize: 12 }}
+                    >
+                      <option>Exterior - Front</option>
+                      <option>Exterior - Back</option>
+                      <option>Kitchen</option>
+                      <option>Living Room</option>
+                      <option>Bedroom</option>
+                      <option>Bathroom</option>
+                      <option>Garage</option>
+                      <option>Other</option>
+                    </select>
+                    <button onClick={() => removePhoto(index)} style={{ position: 'absolute', top: 5, right: 5, background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer' }}>×</button>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={copyTeaser} style={{ padding: '8px 16px', background: copied ? '#16a34a' : '#3b82f6', border: 'none', borderRadius: 6, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{copied ? '✓ Copied!' : 'Copy'}</button>
-                    <button onClick={generateBuyerTeaser} style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', borderRadius: 6, color: '#374151', fontSize: 13, cursor: 'pointer' }}>Regenerate</button>
-                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 30, display: 'flex', gap: 10 }}>
+              <button onClick={() => setPreviewMode('page')} style={{ flex: 1, background: '#00b894', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
+                OMD Page →
+              </button>
+              <button onClick={() => setPreviewMode('email')} style={{ flex: 1, background: '#3498db', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
+                OMD Email →
+              </button>
+              <button onClick={() => setPreviewMode('text')} style={{ flex: 1, background: '#666', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
+                Text Blast →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // OMD PAGE PREVIEW
+  if (previewMode === 'page') {
+    const heroPhoto = photos.find(p => p.label === 'Exterior - Front') || photos[0];
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', background: 'white', minHeight: '100vh' }}>
+          {/* Header */}
+          <div style={{ background: '#1a1a2e', color: 'white', padding: '15px 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <HouseIcon />
+              <span style={{ fontWeight: 700 }}>Off Market Daily</span>
+            </div>
+            <span style={{ background: '#00b894', padding: '4px 12px', borderRadius: 20, fontSize: 12 }}>Exclusive Deal</span>
+          </div>
+
+          {/* Hero */}
+          {heroPhoto && (
+            <div style={{ position: 'relative', height: 400 }}>
+              <img src={heroPhoto.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', padding: 30 }}>
+                <h1 style={{ color: 'white', margin: 0, fontSize: 28 }}>{formData.address}</h1>
+                <p style={{ color: 'rgba(255,255,255,0.8)', margin: '5px 0 0' }}>{formData.city}, {formData.state} {formData.zip}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Price Banner */}
+          <div style={{ background: 'linear-gradient(135deg, #00b894, #00cec9)', padding: 25, textAlign: 'center', color: 'white' }}>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>ASKING PRICE</div>
+            <div style={{ fontSize: 48, fontWeight: 'bold' }}>${formatPrice(formData.askingPrice)}</div>
+            <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.2)', display: 'inline-block', padding: '8px 20px', borderRadius: 20 }}>
+              ARV: ${formatPrice(formData.arv)} | Spread: ${formatPrice(spread)}
+            </div>
+          </div>
+
+          {/* Details */}
+          <div style={{ padding: 30 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 30 }}>
+              <div style={{ textAlign: 'center', padding: 20, background: '#f8f9fa', borderRadius: 12 }}>
+                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{formData.beds}</div>
+                <div style={{ color: '#666' }}>Beds</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: 20, background: '#f8f9fa', borderRadius: 12 }}>
+                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{formData.baths}</div>
+                <div style={{ color: '#666' }}>Baths</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: 20, background: '#f8f9fa', borderRadius: 12 }}>
+                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{formatPrice(formData.sqft)}</div>
+                <div style={{ color: '#666' }}>Sq Ft</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: 20, background: '#f8f9fa', borderRadius: 12 }}>
+                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{formData.yearBuilt}</div>
+                <div style={{ color: '#666' }}>Year Built</div>
+              </div>
+            </div>
+
+            {/* Terms */}
+            <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10 }}>Deal Terms</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 30 }}>
+              <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8 }}>
+                <div style={{ color: '#666', fontSize: 14 }}>Occupancy</div>
+                <div style={{ fontWeight: 600 }}>{formData.occupancy || 'TBD'}</div>
+              </div>
+              <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8 }}>
+                <div style={{ color: '#666', fontSize: 14 }}>Access</div>
+                <div style={{ fontWeight: 600 }}>{formData.access || 'Easy Access'}</div>
+              </div>
+              <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8 }}>
+                <div style={{ color: '#666', fontSize: 14 }}>Close of Escrow</div>
+                <div style={{ fontWeight: 600 }}>{formData.coe}</div>
+              </div>
+              <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8 }}>
+                <div style={{ color: '#666', fontSize: 14 }}>EMD Required</div>
+                <div style={{ fontWeight: 600 }}>${formatPrice(formData.emd)}</div>
+              </div>
+            </div>
+
+            {/* Condition */}
+            <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10 }}>Property Condition</h2>
+            <p style={{ color: '#666', lineHeight: 1.8 }}>{formData.conditionNotes}</p>
+
+            {/* Photos */}
+            {photos.length > 0 && (
+              <>
+                <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10, marginTop: 30 }}>Property Photos</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {photos.map((photo, i) => (
+                    <div key={i}>
+                      <img src={photo.url} alt="" style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 8 }} />
+                      <div style={{ fontSize: 12, color: '#666', marginTop: 5 }}>{photo.label}</div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div style={{ background: '#f8fafc', padding: 24, borderRadius: 8, border: '1px dashed #d1d5db', textAlign: 'center' }}>
-                  <p style={{ color: '#9ca3af', margin: 0 }}>Click "Generate" to create a randomized teaser</p>
-                </div>
+              </>
+            )}
+
+            {/* CTA */}
+            <div style={{ textAlign: 'center', marginTop: 40, padding: 30, background: '#1a1a2e', borderRadius: 12 }}>
+              <h2 style={{ color: 'white', margin: '0 0 15px' }}>Interested in this deal?</h2>
+              <a href={`sms:${formData.phone}`} style={{ display: 'inline-block', background: 'linear-gradient(135deg, #00b894, #00cec9)', color: 'white', padding: '15px 40px', borderRadius: 30, textDecoration: 'none', fontWeight: 'bold', fontSize: 18 }}>
+                I'm Interested - Text Now
+              </a>
+            </div>
+
+            {/* Disclosures */}
+            <div style={{ marginTop: 40, padding: 20, background: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#888' }}>
+              <strong>Disclosures:</strong> This property is being sold "as-is, where-is" with no warranties expressed or implied. Buyer is responsible for conducting their own due diligence including but not limited to property inspections, title search, and verification of all information provided. Seller makes no representations regarding the accuracy of the ARV (After Repair Value) estimate, repair costs, or property condition. All figures are estimates only. Buyer assumes all risk. This is an assignment of contract/wholesale transaction. Earnest money deposit is non-refundable after inspection period. Buyer must provide proof of funds prior to contract execution. Closing timeline is subject to title clearance. Property may be subject to liens, encumbrances, or code violations not disclosed herein. It is the Buyer's sole responsibility to verify zoning, permits, HOA restrictions, and any other factors that may affect the property's value or intended use.
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ padding: 20, background: '#f8f9fa', display: 'flex', gap: 10 }}>
+            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
+              ← Edit
+            </button>
+            <button 
+              onClick={publishDeal} 
+              disabled={publishing}
+              style={{ flex: 1, background: '#00b894', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
+            >
+              {publishing ? 'Publishing...' : 'Publish Deal'}
+            </button>
+          </div>
+
+          {dealUrl && (
+            <div style={{ padding: 20, background: '#e8f5e9', margin: 20, borderRadius: 8 }}>
+              <strong>Deal Published!</strong>
+              <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+                <input type="text" value={dealUrl} readOnly style={{ flex: 1, padding: 10, borderRadius: 6, border: '1px solid #ddd' }} />
+                <button onClick={() => copyToClipboard(dealUrl)} style={{ padding: '10px 20px', background: '#00b894', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Copy</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // EMAIL PREVIEW
+  if (previewMode === 'email') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8f9fa', padding: 20 }}>
+        <div style={{ maxWidth: 700, margin: '0 auto' }}>
+          <div style={{ marginBottom: 20, display: 'flex', gap: 10 }}>
+            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
+              ← Edit
+            </button>
+            <button onClick={() => copyToClipboard(generateEmailHTML())} style={{ flex: 1, background: '#3498db', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+              Copy HTML for GHL
+            </button>
+          </div>
+          <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <div dangerouslySetInnerHTML={{ __html: generateEmailHTML() }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TEXT BLAST PREVIEW
+  if (previewMode === 'text') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8f9fa', padding: 20 }}>
+        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+          <div style={{ marginBottom: 20 }}>
+            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
+              ← Edit
+            </button>
+          </div>
+
+          {/* Buyer Teaser Section */}
+          <div style={{ background: 'white', padding: 20, borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Buyer Teaser (Initial Text - No Link)</h3>
+            <div style={{ background: '#f8f9fa', padding: 15, borderRadius: 8, fontFamily: 'monospace', fontSize: 14, marginBottom: 15 }}>
+              {buyerTeaser || 'Click Generate to create a teaser message'}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button 
+                onClick={generateBuyerTeaser} 
+                disabled={generatingTeaser}
+                style={{ flex: 1, background: '#9b59b6', color: 'white', border: 'none', padding: 12, borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
+              >
+                {generatingTeaser ? 'Generating...' : buyerTeaser ? 'Regenerate' : 'Generate'}
+              </button>
+              {buyerTeaser && (
+                <button onClick={() => copyToClipboard(buyerTeaser)} style={{ padding: '12px 24px', background: '#00b894', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                  Copy
+                </button>
               )}
             </div>
+          </div>
 
-            {/* TEXT BLAST SECTION */}
-            <div style={{ background: '#fff', borderRadius: 12, padding: 28, boxShadow: '0 25px 80px rgba(0,0,0,0.3)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', fontFamily: 'Montserrat, sans-serif' }}>Text Blast (Dispo Partners)</div>
-                  <div style={{ fontSize: 13, color: '#64748b' }}>Full details, no branding - for other disposition houses</div>
-                </div>
-                <button onClick={copyTextBlast} style={{ padding: '10px 20px', background: copied ? '#16a34a' : '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{copied ? '✓ Copied!' : 'Copy Text'}</button>
-              </div>
-              <pre style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 1.7, color: '#111827', whiteSpace: 'pre-wrap', background: '#f8fafc', padding: 20, borderRadius: 8, border: '1px solid #e2e8f0', margin: 0 }}>{textBlast}</pre>
-            </div>
-
+          {/* Full Text Blast */}
+          <div style={{ background: 'white', padding: 20, borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Full Text Blast (For Dispo Partners)</h3>
+            <pre style={{ background: '#f8f9fa', padding: 20, borderRadius: 8, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+              {generateTextBlast()}
+            </pre>
+            <button onClick={() => copyToClipboard(generateTextBlast())} style={{ marginTop: 15, width: '100%', background: '#00b894', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+              Copy Text Blast
+            </button>
           </div>
         </div>
       </div>
     );
   }
-
-  // ============ PAGE PREVIEW ============
-  const isMobile = viewMode === 'mobile';
-  
-  const PreviewContent = () => (
-    <div style={{ background: '#fff', fontFamily: '"DM Sans", sans-serif', minHeight: isMobile ? '100%' : 'auto' }}>
-      {/* HEADER WITH HOUSE ICON AND EXCLUSIVE DEAL BADGE */}
-      <div style={{ padding: isMobile ? '12px 16px' : '14px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: isMobile ? 32 : 40, height: isMobile ? 32 : 40, borderRadius: 10, background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <HouseIcon size={isMobile ? 18 : 22} />
-          </div>
-          <span style={{ fontWeight: 700, fontSize: isMobile ? 14 : 16, color: '#111827', fontFamily: 'Montserrat, sans-serif' }}>OffMarket Daily</span>
-        </div>
-        <div style={{ background: '#dcfce7', color: '#166534', padding: isMobile ? '4px 10px' : '6px 14px', borderRadius: 20, fontSize: isMobile ? 11 : 13, fontWeight: 600 }}>Exclusive Deal</div>
-      </div>
-
-      {isMobile && (
-        <div style={{ padding: 16, background: '#f8fafc' }}>
-          <div style={{ padding: 20, background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', borderRadius: 16, marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 600, textTransform: 'uppercase' }}>Asking</div>
-            <div style={{ fontSize: 32, fontWeight: 700, color: '#fff', fontFamily: 'Montserrat, sans-serif' }}>{formatCurrency(formData.askingPrice)}</div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div style={{ background: '#fff', padding: 14, borderRadius: 12, border: '1px solid #e2e8f0' }}><div style={{ fontSize: 11, color: '#64748b' }}>ARV</div><div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Montserrat, sans-serif' }}>{formatCurrency(formData.arv)}</div></div>
-            <div style={{ background: '#dcfce7', padding: 14, borderRadius: 12 }}><div style={{ fontSize: 11, color: '#166534' }}>Spread</div><div style={{ fontSize: 18, fontWeight: 700, color: '#16a34a', fontFamily: 'Montserrat, sans-serif' }}>{formatCurrency(calculateSpread())}</div></div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1fr 380px', gap: 40, padding: isMobile ? 16 : 40, maxWidth: 1400, margin: '0 auto' }}>
-        <div>
-          {photos.length > 0 ? (
-            <div style={{ marginBottom: isMobile ? 20 : 32 }}>
-              <div style={{ width: '100%', height: isMobile ? 220 : 420, borderRadius: 16, overflow: 'hidden', marginBottom: 12, position: 'relative' }}>
-                <img src={photos[activeImg]?.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '6px 12px', borderRadius: 6, fontSize: 13 }}>{photos[activeImg]?.label}</div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
-                {photos.map((p, i) => (<img key={p.id} src={p.url} onClick={() => setActiveImg(i)} style={{ width: isMobile ? 60 : 80, height: isMobile ? 60 : 80, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', border: activeImg === i ? '3px solid #3b82f6' : '3px solid transparent', flexShrink: 0 }} />))}
-              </div>
-            </div>
-          ) : (
-            <div style={{ width: '100%', height: isMobile ? 200 : 400, borderRadius: 16, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isMobile ? 20 : 32 }}><div style={{ textAlign: 'center', color: '#94a3b8' }}><div style={{ fontSize: 48 }}>🏠</div><div>No photos</div></div></div>
-          )}
-
-          <h1 style={{ fontSize: isMobile ? 24 : 34, fontWeight: 700, marginBottom: 8, fontFamily: 'Montserrat, sans-serif', color: '#111827' }}>{formData.address || '123 Main St'}</h1>
-          <p style={{ fontSize: isMobile ? 16 : 18, color: '#6b7280', marginBottom: isMobile ? 20 : 28 }}>{formData.city}, {formData.state} {formData.zip}</p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 16, marginBottom: isMobile ? 20 : 32, padding: isMobile ? 16 : 24, background: '#f8fafc', borderRadius: 16 }}>
-            {[{ l: 'Beds', v: formData.beds }, { l: 'Baths', v: formData.baths }, { l: 'Sq Ft', v: formData.sqft ? Number(formData.sqft).toLocaleString() : '-' }, { l: 'Year', v: formData.yearBuilt }].map(s => (<div key={s.l}><div style={{ color: '#64748b', fontSize: 13, marginBottom: 4 }}>{s.l}</div><div style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, fontFamily: 'Montserrat, sans-serif' }}>{s.v || '-'}</div></div>))}
-          </div>
-
-          {formData.conditionNotes && (<div style={{ padding: isMobile ? 16 : 24, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', marginBottom: isMobile ? 20 : 0 }}><h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, marginBottom: 12, fontFamily: 'Montserrat, sans-serif' }}>Condition Notes</h3><p style={{ color: '#475569', fontSize: isMobile ? 14 : 16, lineHeight: 1.7, margin: 0 }}>{formData.conditionNotes}</p></div>)}
-        </div>
-
-        {!isMobile && (
-          <div>
-            <div style={{ padding: 28, background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', borderRadius: 20, marginBottom: 16, boxShadow: '0 8px 30px rgba(30,64,175,0.35)' }}>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, fontFamily: 'Montserrat, sans-serif' }}>Asking Price</div>
-              <div style={{ fontSize: 44, fontWeight: 700, color: '#fff', fontFamily: 'Montserrat, sans-serif' }}>{formatCurrency(formData.askingPrice)}</div>
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.2)', margin: '20px 0' }} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', fontFamily: 'Montserrat, sans-serif' }}>ARV</div><div style={{ fontSize: 24, fontWeight: 700, color: '#fff', fontFamily: 'Montserrat, sans-serif' }}>{formatCurrency(formData.arv)}</div></div>
-                <div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', fontFamily: 'Montserrat, sans-serif' }}>Spread</div><div style={{ fontSize: 24, fontWeight: 700, color: '#86efac', fontFamily: 'Montserrat, sans-serif' }}>{formatCurrency(calculateSpread())}</div></div>
-              </div>
-            </div>
-            <div style={{ padding: 24, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, fontFamily: 'Montserrat, sans-serif' }}>Deal Terms</h3>
-              {[{ l: 'COE', v: formData.coe ? new Date(formData.coe).toLocaleDateString() : 'TBD' }, { l: 'EMD', v: formData.emd ? formatCurrency(formData.emd) : 'TBD' }, { l: 'Occupancy', v: formData.occupancy }, { l: 'Access', v: formData.access }].map(t => (<div key={t.l} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}><span style={{ color: '#64748b', fontSize: 14 }}>{t.l}</span><span style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>{t.v}</span></div>))}
-            </div>
-            <a href={`sms:${formData.phone?.replace(/\D/g, '')}?body=I'm interested in ${formData.address}`} style={{ display: 'block', width: '100%', padding: '18px 24px', background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', borderRadius: 12, color: '#fff', fontSize: 16, fontWeight: 700, textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box', fontFamily: 'Montserrat, sans-serif', marginBottom: 12 }}>I'm Interested — Text Now</a>
-            <a href={`tel:${formData.phone?.replace(/\D/g, '')}`} style={{ display: 'block', textAlign: 'center', color: '#64748b', fontSize: 14, textDecoration: 'none' }}>Or tap to call: <span style={{ fontWeight: 600, color: '#374151' }}>{formData.phone}</span></a>
-          </div>
-        )}
-      </div>
-
-      {isMobile && (<div style={{ padding: 16, background: '#fff', borderTop: '1px solid #e5e7eb', position: 'sticky', bottom: 0 }}><a href={`sms:${formData.phone?.replace(/\D/g, '')}?body=I'm interested in ${formData.address}`} style={{ display: 'block', width: '100%', padding: '16px 20px', background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', borderRadius: 10, color: '#fff', fontSize: 16, fontWeight: 700, fontFamily: 'Montserrat, sans-serif', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}>I'm Interested — Text Now</a></div>)}
-
-      {/* FOOTER WITH FULL DISCLOSURES */}
-      <div style={{ padding: '24px 40px', borderTop: '1px solid #e5e7eb', background: '#f8fafc', marginTop: isMobile ? 0 : 40 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 6, background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-          </div>
-          <span style={{ fontWeight: 700, fontSize: 13, color: '#374151', fontFamily: 'Montserrat, sans-serif' }}>OffMarket Daily</span>
-        </div>
-      </div>
-      <div style={{ padding: isMobile ? '24px 16px' : '32px 40px', background: '#f1f5f9', borderTop: '1px solid #e2e8f0' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <p style={{ fontSize: 11, color: '#64748b', marginBottom: 12, fontWeight: 600 }}>Copyright © OffMarket Daily. All rights reserved.</p>
-          <p style={{ fontSize: 10, color: '#64748b', fontWeight: 600, marginBottom: 6 }}>Disclaimer:</p>
-          <p style={{ fontSize: 10, color: '#64748b', lineHeight: 1.6, marginBottom: 10 }}>House is being sold as-is, and the buyer is to pay all closing costs. {formatCurrency(formData.emd)} Non-Refundable earnest money to be deposited by NOON of the following day or contract will be cancelled. Buyer must close with cash or hard money loan.</p>
-          <p style={{ fontSize: 10, color: '#64748b', lineHeight: 1.6, marginBottom: 10 }}>The buyer is not relying on any representations, whether written or oral, regarding the properties above. Price based on a cash or hard money offer and is net to seller. Buyers to do their own independent due diligence.</p>
-          <p style={{ fontSize: 10, color: '#64748b', lineHeight: 1.6, marginBottom: 10 }}>Buyer must do your own due diligence, evaluation and inspection prior to making an offer. Determining value is the buyer's responsibility. Seller strongly recommends buyers employ an Investment Realtor to help determine value. Any reference to the value of a property by the Seller or any representative of the Seller is an opinion of value. Everyone has a differing opinion on value, cost of construction, materials, quality of workmanship and market speculation. Value is ultimately the buyer's responsibility and they should be diligent in determining market value.</p>
-          <p style={{ fontSize: 10, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>REALTORS:</p>
-          <p style={{ fontSize: 10, color: '#64748b', lineHeight: 1.6, marginBottom: 10 }}>If you are currently working with a client, and wish to receive a commission, please note that the wholesale price does not include your commission. You may want to negotiate a commission with your client separate from the wholesale price or you may adjust the wholesale price upwards to include your commission.</p>
-          <p style={{ fontSize: 10, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>WHOLESALERS:</p>
-          <p style={{ fontSize: 10, color: '#64748b', lineHeight: 1.6, margin: 0 }}>If you'd like to JV on this deal send us a text message, email, or call to let us know you are going to be sharing our deal with your investors.</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ minHeight: '100vh', background: '#1e293b', fontFamily: '"DM Sans", sans-serif' }}>
-      <div style={{ padding: '12px 24px', background: '#0f172a', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button onClick={() => setMode('form')} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>← Edit</button>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setViewMode('desktop')} style={{ padding: '8px 16px', background: viewMode === 'desktop' ? '#3b82f6' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>Desktop</button>
-          <button onClick={() => setViewMode('mobile')} style={{ padding: '8px 16px', background: viewMode === 'mobile' ? '#3b82f6' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>Mobile</button>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {dealUrl ? (
-            <>
-              <input value={dealUrl} readOnly style={{ width: 280, padding: '8px 12px', borderRadius: 8, border: 'none', fontSize: 12, background: 'rgba(255,255,255,0.1)', color: '#fff' }} />
-              <button onClick={copyDealUrl} style={{ padding: '8px 16px', background: copied ? '#16a34a' : '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{copied ? '✓ Copied!' : 'Copy'}</button>
-            </>
-          ) : (
-            <button onClick={publishDeal} disabled={publishing} style={{ padding: '8px 20px', background: publishing ? '#94a3b8' : '#16a34a', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{publishing ? 'Publishing...' : 'Publish Deal'}</button>
-          )}
-        </div>
-      </div>
-
-      <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-        {isMobile ? (
-          <div style={{ width: 375, height: 812, background: '#000', borderRadius: 50, padding: 12, boxShadow: '0 25px 80px rgba(0,0,0,0.5)' }}>
-            <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: 40, overflow: 'hidden', overflowY: 'auto' }}>
-              <PreviewContent />
-            </div>
-          </div>
-        ) : (
-          <div style={{ width: '100%', maxWidth: 1400, background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 25px 80px rgba(0,0,0,0.3)' }}>
-            <PreviewContent />
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
