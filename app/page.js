@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 
@@ -65,121 +64,99 @@ export default function OMDGenerator() {
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
   const [parsing, setParsing] = useState(false);
 
-  // AI-powered parsing
-  const parseInput = async () => {
+  // CLIENT-SIDE PARSER - No API needed, instant and reliable
+  const parseInput = () => {
     if (!rawInput.trim()) return;
-    
     setParsing(true);
-    try {
-      const response = await fetch('/api/parse-deal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText: rawInput })
-      });
-      
-      if (response.ok) {
-        const parsed = await response.json();
-        setFormData({
-          ...formData,
-          address: parsed.address || '',
-          city: parsed.city || '',
-          state: parsed.state || '',
-          zip: parsed.zip || '',
-          askingPrice: parsed.askingPrice || '',
-          arv: parsed.arv || '',
-          beds: parsed.beds || '',
-          baths: parsed.baths || '',
-          sqft: parsed.sqft || '',
-          yearBuilt: parsed.yearBuilt || '',
-          occupancy: parsed.occupancy || '',
-          coe: parsed.coe || '',
-          emd: parsed.emd || '',
-          hoa: parsed.hoa || '',
-          conditionNotes: parsed.conditionNotes || ''
-        });
-      } else {
-        fallbackParse();
-      }
-    } catch (error) {
-      console.error('AI parse failed, using fallback:', error);
-      fallbackParse();
-    }
-    setParsing(false);
-  };
-
-  // Fallback basic parser
-  const fallbackParse = () => {
-    const lines = rawInput.split('\n');
+    
+    const t = rawInput;
+    const tLower = rawInput.toLowerCase();
     const data = { ...formData };
     
-    lines.forEach(line => {
-      const lower = line.toLowerCase();
-      
-      if (lower.includes('address') || /^\d+\s+\w+/.test(line.trim())) {
-        const addressMatch = line.match(/\d+\s+[\w\s]+(?:st|street|dr|drive|ave|avenue|rd|road|ln|lane|ct|court|blvd|way|pl|place)[,.]?\s*([\w\s]+)[,.]?\s*([A-Z]{2})\s*(\d{5})?/i);
-        if (addressMatch) {
-          data.address = addressMatch[0].split(',')[0].trim();
-        }
+    // Convert "5k" to "5000", "410k" to "410000"
+    const toNumber = (str) => {
+      if (!str) return '';
+      let s = str.replace(/[$,]/g, '').trim();
+      if (s.toLowerCase().endsWith('k')) {
+        return String(Math.round(parseFloat(s.slice(0, -1)) * 1000));
       }
-      
-      if (lower.includes('asking') || lower.includes('price')) {
-        const priceMatch = line.match(/(\d{1,3}[,\d]*|\d+k)/i);
-        if (priceMatch) {
-          let price = priceMatch[1].replace(/,/g, '');
-          if (price.toLowerCase().endsWith('k')) {
-            price = parseInt(price) * 1000;
-          }
-          data.askingPrice = String(price);
-        }
-      }
-      
-      if (lower.includes('arv')) {
-        const arvMatch = line.match(/(\d{1,3}[,\d]*|\d+k)/i);
-        if (arvMatch) {
-          let arv = arvMatch[1].replace(/,/g, '');
-          if (arv.toLowerCase().endsWith('k')) {
-            arv = parseInt(arv) * 1000;
-          }
-          data.arv = String(arv);
-        }
-      }
-      
-      const bedBathMatch = line.match(/(\d+)\s*(?:bed|br|bedroom)/i);
-      const bathMatch = line.match(/(\d+)\s*(?:bath|ba|bathroom)/i);
-      if (bedBathMatch) data.beds = bedBathMatch[1];
-      if (bathMatch) data.baths = bathMatch[1];
-      
-      const slashMatch = line.match(/(\d+)\s*\/\s*(\d+)/);
-      if (slashMatch && !data.beds) {
-        data.beds = slashMatch[1];
-        data.baths = slashMatch[2];
-      }
-      
-      if (lower.includes('sqft') || lower.includes('sq ft') || lower.includes('sf')) {
-        const sqftMatch = line.match(/(\d{1,2}[,\d]*)/);
-        if (sqftMatch) data.sqft = sqftMatch[1].replace(/,/g, '');
-      }
-      
-      const yearMatch = line.match(/(?:built|year)\s*:?\s*(\d{4})/i) || line.match(/(\d{4})/);
-      if (yearMatch && parseInt(yearMatch[1]) > 1800 && parseInt(yearMatch[1]) < 2030) {
-        if (lower.includes('built') || lower.includes('year')) {
-          data.yearBuilt = yearMatch[1];
-        }
-      }
-      
-      if (lower.includes('emd') || lower.includes('earnest')) {
-        const emdMatch = line.match(/(\d{1,2}[,\d]*|\d+k)/i);
-        if (emdMatch) {
-          let emd = emdMatch[1].replace(/,/g, '');
-          if (emd.toLowerCase().endsWith('k')) {
-            emd = parseInt(emd) * 1000;
-          }
-          data.emd = String(emd);
-        }
-      }
-    });
-    
+      const m = s.match(/[\d.]+/);
+      return m ? m[0] : '';
+    };
+
+    let m;
+
+    // ADDRESS
+    m = t.match(/address[:\s]+([^,\n]+)/i);
+    if (m) data.address = m[1].trim();
+
+    // CITY
+    m = t.match(/,\s*([A-Za-z\s]+),\s*[A-Z]{2}\s*\d{5}/);
+    if (m) data.city = m[1].trim();
+
+    // STATE
+    m = t.match(/,\s*([A-Z]{2})\s*\d{5}/);
+    if (m) data.state = m[1];
+
+    // ZIP
+    m = t.match(/[A-Z]{2}\s*(\d{5})/);
+    if (m) data.zip = m[1];
+
+    // ASKING PRICE
+    m = t.match(/asking\s+(\d+k?)/i);
+    if (m) data.askingPrice = toNumber(m[1]);
+
+    // ARV
+    m = t.match(/arv[^0-9]*([\d,]+k?)/i);
+    if (m) data.arv = toNumber(m[1]);
+
+    // BEDS
+    m = t.match(/(\d+)\s*bed/i);
+    if (m) data.beds = m[1];
+
+    // BATHS
+    m = t.match(/(\d+(?:\.\d+)?)\s*bath/i);
+    if (m) data.baths = m[1];
+
+    // SQFT
+    m = t.match(/sqft\s*(\d+)/i) || t.match(/(\d+)\s*sqft/i);
+    if (m) data.sqft = m[1];
+
+    // YEAR BUILT
+    m = t.match(/built\s*(19\d{2}|20\d{2})/i);
+    if (m) data.yearBuilt = m[1];
+
+    // OCCUPANCY
+    m = t.match(/(vacant|occupied|tenant)/i);
+    if (m) data.occupancy = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+
+    // ACCESS / LOCKBOX
+    m = t.match(/lockbox\s*(?:code)?\s*(\d+)/i);
+    if (m) data.access = 'Lockbox ' + m[1];
+
+    // COE
+    m = t.match(/close\s*by\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+    if (m) data.coe = m[1];
+
+    // EMD
+    m = t.match(/emd\s+(\d+k?)/i);
+    if (m) data.emd = toNumber(m[1]);
+
+    // HOA
+    m = t.match(/hoa\s+\$?(\d+(?:\/mo)?)/i);
+    if (m) data.hoa = m[1];
+
+    // CONDITION NOTES
+    const noteStart = tLower.search(/hvac|roof|kitchen/);
+    if (noteStart !== -1) {
+      let content = t.substring(noteStart);
+      const stopIdx = content.toLowerCase().search(/lockbox|seller wants/);
+      if (stopIdx > 0) content = content.substring(0, stopIdx);
+      data.conditionNotes = content.trim();
+    }
+
     setFormData(data);
+    setParsing(false);
   };
 
   const handlePhotoUpload = async (e) => {
@@ -443,11 +420,11 @@ Reply if interested`;
 
           <div style={{ background: 'white', padding: 30, borderRadius: '0 0 12px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h3>Paste Deal Info</h3>
-            <p style={{ color: '#666', fontSize: 14, marginBottom: 10 }}>Paste messy deal info - AI will extract the fields automatically.</p>
+            <p style={{ color: '#666', fontSize: 14, marginBottom: 10 }}>Paste messy deal info - parser will extract the fields automatically.</p>
             <textarea
               value={rawInput}
               onChange={(e) => setRawInput(e.target.value)}
-              placeholder="Paste your deal details here - can be messy, AI will figure it out..."
+              placeholder="Paste your deal details here - can be messy, parser will figure it out..."
               style={{ width: '100%', height: 150, padding: 15, border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical' }}
             />
             <button 
@@ -455,7 +432,7 @@ Reply if interested`;
               disabled={parsing}
               style={{ marginTop: 10, background: parsing ? '#ccc' : '#00b894', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: parsing ? 'default' : 'pointer', fontWeight: 600 }}
             >
-              {parsing ? 'Parsing with AI...' : 'Parse Deal Info'}
+              {parsing ? 'Parsing...' : 'Parse Deal Info'}
             </button>
 
             <div style={{ marginTop: 30 }}>
