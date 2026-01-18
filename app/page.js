@@ -64,6 +64,7 @@ export default function OMDGenerator() {
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // CLIENT-SIDE PARSER - No API needed, instant and reliable
   const parseInput = () => {
@@ -192,31 +193,30 @@ export default function OMDGenerator() {
     setPhotos(updated);
   };
 
-  const generateBuyerTeaser = async () => {
+  const generateBuyerTeaser = () => {
     setGeneratingTeaser(true);
-    try {
-      const response = await fetch('/api/label-photos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'teaser',
-          city: formData.city,
-          state: formData.state,
-          beds: formData.beds,
-          baths: formData.baths
-        })
-      });
-      const data = await response.json();
-      setBuyerTeaser(data.teaser || `Off-market in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still buying?`);
-    } catch (error) {
-      const teasers = [
-        `Hey! Off-market in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still buying?`,
-        `New deal just hit - ${formData.city}, ${formData.state}. ${formData.beds} bed. You active?`,
-        `Off-market in ${formData.city} - ${formData.beds}/${formData.baths}. Interested?`,
-        `Got one in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still looking?`
-      ];
-      setBuyerTeaser(teasers[Math.floor(Math.random() * teasers.length)]);
-    }
+    
+    const teasers = [
+      `Hey! Off-market in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still buying?`,
+      `New deal just hit - ${formData.city}, ${formData.state}. ${formData.beds} bed. You active?`,
+      `Off-market in ${formData.city} - ${formData.beds}/${formData.baths}. Interested?`,
+      `Got one in ${formData.city}, ${formData.state} - ${formData.beds}/${formData.baths}. Still looking?`,
+      `Hey, just got something new in ${formData.city}. ${formData.beds}/${formData.baths}. You buying?`,
+      `Quick one - off-market ${formData.beds}/${formData.baths} in ${formData.city}. Still in the market?`,
+      `${formData.city} deal just came in. ${formData.beds} bed ${formData.baths} bath. Want details?`,
+      `Hey! ${formData.beds}/${formData.baths} in ${formData.city}, ${formData.state}. Off-market. Interested?`,
+      `New ${formData.city} property - ${formData.beds}/${formData.baths}. Are you still active?`,
+      `Got a ${formData.beds}/${formData.baths} off-market in ${formData.city}. You looking?`,
+      `Hey, something just hit in ${formData.city}. ${formData.beds} bed. Still buying in the area?`,
+      `Off-market alert - ${formData.city}, ${formData.state}. ${formData.beds}/${formData.baths}. You in?`,
+      `Quick question - still buying in ${formData.city}? Got a ${formData.beds}/${formData.baths} off-market.`,
+      `${formData.city} - ${formData.beds}/${formData.baths} just came across my desk. You active?`,
+      `Hey! Are you still looking in ${formData.city}? Got a ${formData.beds} bed off-market.`
+    ];
+    
+    // True random - different each time
+    const randomIndex = Math.floor(Math.random() * teasers.length);
+    setBuyerTeaser(teasers[randomIndex]);
     setGeneratingTeaser(false);
   };
 
@@ -564,17 +564,34 @@ Reply if interested`;
           {/* ZILLOW-STYLE PHOTO GALLERY AT TOP */}
           {photos.length > 0 ? (
             <div style={{ position: 'relative' }}>
-              {/* Main Photo Display */}
-              <div style={{ 
-                position: 'relative', 
-                height: 400,
-                background: '#1a1a2e'
-              }}>
+              {/* Main Photo Display - CLICK TO OPEN LIGHTBOX */}
+              <div 
+                onClick={() => setLightboxOpen(true)}
+                style={{ 
+                  position: 'relative', 
+                  height: 400,
+                  background: '#1a1a2e',
+                  cursor: 'pointer'
+                }}
+              >
                 <img 
                   src={photos[activeImg]?.url} 
                   alt="" 
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                 />
+                {/* Click to enlarge hint */}
+                <div style={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 80,
+                  padding: '8px 12px',
+                  background: 'rgba(0,0,0,0.6)',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: '#fff'
+                }}>
+                  Click to enlarge
+                </div>
                 {/* Address Overlay */}
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', padding: 30 }}>
                   <h1 style={{ color: 'white', margin: 0, fontSize: 28 }}>{formData.address}</h1>
@@ -612,7 +629,7 @@ Reply if interested`;
                 {/* Left Arrow */}
                 {activeImg > 0 && (
                   <button 
-                    onClick={() => setActiveImg(activeImg - 1)}
+                    onClick={(e) => { e.stopPropagation(); setActiveImg(activeImg - 1); }}
                     style={{ 
                       position: 'absolute', 
                       left: 16, 
@@ -634,7 +651,7 @@ Reply if interested`;
                 {/* Right Arrow */}
                 {activeImg < photos.length - 1 && (
                   <button 
-                    onClick={() => setActiveImg(activeImg + 1)}
+                    onClick={(e) => { e.stopPropagation(); setActiveImg(activeImg + 1); }}
                     style={{ 
                       position: 'absolute', 
                       right: 16, 
@@ -676,6 +693,144 @@ Reply if interested`;
                       <img src={photo.url} alt={photo.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* FULLSCREEN LIGHTBOX MODAL */}
+              {lightboxOpen && (
+                <div 
+                  style={{ 
+                    position: 'fixed', 
+                    top: 0, 
+                    left: 0, 
+                    right: 0, 
+                    bottom: 0, 
+                    background: 'rgba(0,0,0,0.95)', 
+                    zIndex: 9999,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  onClick={() => setLightboxOpen(false)}
+                >
+                  {/* Close button */}
+                  <button 
+                    onClick={() => setLightboxOpen(false)}
+                    style={{ 
+                      position: 'absolute', 
+                      top: 20, 
+                      right: 20, 
+                      background: 'rgba(255,255,255,0.2)', 
+                      border: 'none', 
+                      color: 'white', 
+                      fontSize: 32, 
+                      cursor: 'pointer',
+                      padding: '5px 15px',
+                      borderRadius: 8,
+                      zIndex: 10001
+                    }}
+                  >
+                    ×
+                  </button>
+
+                  {/* Photo counter */}
+                  <div style={{ position: 'absolute', top: 25, left: 25, color: 'white', fontSize: 18, fontWeight: 600 }}>
+                    {activeImg + 1} / {photos.length}
+                  </div>
+
+                  {/* Main image */}
+                  <img 
+                    src={photos[activeImg]?.url} 
+                    alt="" 
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ 
+                      maxHeight: '75vh', 
+                      maxWidth: '90vw', 
+                      objectFit: 'contain',
+                      borderRadius: 8
+                    }} 
+                  />
+
+                  {/* Photo label */}
+                  <div style={{ color: 'white', marginTop: 15, fontSize: 18, fontWeight: 500 }}>
+                    {photos[activeImg]?.label}
+                  </div>
+
+                  {/* Previous button */}
+                  {activeImg > 0 && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setActiveImg(activeImg - 1); }}
+                      style={{ 
+                        position: 'absolute', 
+                        left: 20, 
+                        top: '50%', 
+                        transform: 'translateY(-50%)',
+                        background: 'rgba(255,255,255,0.2)', 
+                        border: 'none', 
+                        color: 'white', 
+                        fontSize: 40, 
+                        cursor: 'pointer',
+                        padding: '15px 22px',
+                        borderRadius: 8
+                      }}
+                    >
+                      ‹
+                    </button>
+                  )}
+
+                  {/* Next button */}
+                  {activeImg < photos.length - 1 && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setActiveImg(activeImg + 1); }}
+                      style={{ 
+                        position: 'absolute', 
+                        right: 20, 
+                        top: '50%', 
+                        transform: 'translateY(-50%)',
+                        background: 'rgba(255,255,255,0.2)', 
+                        border: 'none', 
+                        color: 'white', 
+                        fontSize: 40, 
+                        cursor: 'pointer',
+                        padding: '15px 22px',
+                        borderRadius: 8
+                      }}
+                    >
+                      ›
+                    </button>
+                  )}
+
+                  {/* Thumbnail strip */}
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ 
+                      display: 'flex', 
+                      gap: 8, 
+                      marginTop: 20, 
+                      overflowX: 'auto', 
+                      maxWidth: '90vw',
+                      padding: '10px 0'
+                    }}
+                  >
+                    {photos.map((photo, i) => (
+                      <img 
+                        key={i}
+                        src={photo.url} 
+                        alt="" 
+                        onClick={() => setActiveImg(i)}
+                        style={{ 
+                          width: 70, 
+                          height: 50, 
+                          objectFit: 'cover', 
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          border: i === activeImg ? '3px solid #00b894' : '3px solid transparent',
+                          opacity: i === activeImg ? 1 : 0.6
+                        }} 
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
