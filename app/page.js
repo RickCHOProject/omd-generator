@@ -62,73 +62,121 @@ export default function OMDGenerator() {
   const [uploadProgress, setUploadProgress] = useState('');
   const [buyerTeaser, setBuyerTeaser] = useState('');
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
+  const [parsing, setParsing] = useState(false);
 
-  const parseInput = () => {
+  // AI-powered parsing
+  const parseInput = async () => {
+    if (!rawInput.trim()) return;
+    
+    setParsing(true);
+    try {
+      const response = await fetch('/api/parse-deal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawText: rawInput })
+      });
+      
+      if (response.ok) {
+        const parsed = await response.json();
+        setFormData({
+          ...formData,
+          address: parsed.address || '',
+          city: parsed.city || '',
+          state: parsed.state || '',
+          zip: parsed.zip || '',
+          askingPrice: parsed.askingPrice || '',
+          arv: parsed.arv || '',
+          beds: parsed.beds || '',
+          baths: parsed.baths || '',
+          sqft: parsed.sqft || '',
+          yearBuilt: parsed.yearBuilt || '',
+          occupancy: parsed.occupancy || '',
+          coe: parsed.coe || '',
+          emd: parsed.emd || '',
+          hoa: parsed.hoa || '',
+          conditionNotes: parsed.conditionNotes || ''
+        });
+      } else {
+        fallbackParse();
+      }
+    } catch (error) {
+      console.error('AI parse failed, using fallback:', error);
+      fallbackParse();
+    }
+    setParsing(false);
+  };
+
+  // Fallback basic parser
+  const fallbackParse = () => {
     const lines = rawInput.split('\n');
     const data = { ...formData };
-    let notesLines = [];
-    let capturingNotes = false;
     
     lines.forEach(line => {
       const lower = line.toLowerCase();
       
-      // Check if we're starting notes section
-      if (lower.includes('notes:') || lower.includes('condition:')) {
-        capturingNotes = true;
-        const afterColon = line.split(':').slice(1).join(':').trim();
-        if (afterColon) notesLines.push(afterColon);
-        return;
+      if (lower.includes('address') || /^\d+\s+\w+/.test(line.trim())) {
+        const addressMatch = line.match(/\d+\s+[\w\s]+(?:st|street|dr|drive|ave|avenue|rd|road|ln|lane|ct|court|blvd|way|pl|place)[,.]?\s*([\w\s]+)[,.]?\s*([A-Z]{2})\s*(\d{5})?/i);
+        if (addressMatch) {
+          data.address = addressMatch[0].split(',')[0].trim();
+        }
       }
       
-      // If capturing notes, keep adding lines
-      if (capturingNotes) {
-        if (line.trim()) notesLines.push(line.trim());
-        return;
+      if (lower.includes('asking') || lower.includes('price')) {
+        const priceMatch = line.match(/(\d{1,3}[,\d]*|\d+k)/i);
+        if (priceMatch) {
+          let price = priceMatch[1].replace(/,/g, '');
+          if (price.toLowerCase().endsWith('k')) {
+            price = parseInt(price) * 1000;
+          }
+          data.askingPrice = String(price);
+        }
       }
       
-      if (lower.includes('address:')) {
-        const full = line.split(':').slice(1).join(':').trim();
-        const parts = full.split(',').map(p => p.trim());
-        data.address = parts[0] || '';
-        data.city = parts[1] || '';
-        const stateZip = (parts[2] || '').split(' ').filter(Boolean);
-        data.state = stateZip[0] || '';
-        data.zip = stateZip[1] || '';
+      if (lower.includes('arv')) {
+        const arvMatch = line.match(/(\d{1,3}[,\d]*|\d+k)/i);
+        if (arvMatch) {
+          let arv = arvMatch[1].replace(/,/g, '');
+          if (arv.toLowerCase().endsWith('k')) {
+            arv = parseInt(arv) * 1000;
+          }
+          data.arv = String(arv);
+        }
       }
-      else if (lower.includes('asking price:') || lower.includes('asking:')) {
-        data.askingPrice = line.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || '';
+      
+      const bedBathMatch = line.match(/(\d+)\s*(?:bed|br|bedroom)/i);
+      const bathMatch = line.match(/(\d+)\s*(?:bath|ba|bathroom)/i);
+      if (bedBathMatch) data.beds = bedBathMatch[1];
+      if (bathMatch) data.baths = bathMatch[1];
+      
+      const slashMatch = line.match(/(\d+)\s*\/\s*(\d+)/);
+      if (slashMatch && !data.beds) {
+        data.beds = slashMatch[1];
+        data.baths = slashMatch[2];
       }
-      else if (lower.includes('arv:') || lower.includes('estimated arv:')) {
-        data.arv = line.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || '';
+      
+      if (lower.includes('sqft') || lower.includes('sq ft') || lower.includes('sf')) {
+        const sqftMatch = line.match(/(\d{1,2}[,\d]*)/);
+        if (sqftMatch) data.sqft = sqftMatch[1].replace(/,/g, '');
       }
-      else if (lower.includes('beds/baths:') || lower.includes('bed/bath:')) {
-        const match = line.match(/(\d+)\s*\/\s*(\d+)/);
-        if (match) { data.beds = match[1]; data.baths = match[2]; }
+      
+      const yearMatch = line.match(/(?:built|year)\s*:?\s*(\d{4})/i) || line.match(/(\d{4})/);
+      if (yearMatch && parseInt(yearMatch[1]) > 1800 && parseInt(yearMatch[1]) < 2030) {
+        if (lower.includes('built') || lower.includes('year')) {
+          data.yearBuilt = yearMatch[1];
+        }
       }
-      else if (lower.includes('sq ft:') || lower.includes('sqft:') || lower.includes('living area')) {
-        data.sqft = line.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || '';
-      }
-      else if (lower.includes('year built:')) {
-        data.yearBuilt = line.match(/\d{4}/)?.[0] || '';
-      }
-      else if (lower.includes('occupancy')) {
-        data.occupancy = line.split(':').slice(1).join(':').trim();
-      }
-      else if (lower.includes('coe:') || lower.includes('close of escrow')) {
-        data.coe = line.split(':').slice(1).join(':').trim();
-      }
-      else if (lower.includes('emd:')) {
-        data.emd = line.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || '';
-      }
-      else if (lower.includes('hoa:')) {
-        data.hoa = line.split(':').slice(1).join(':').trim();
+      
+      if (lower.includes('emd') || lower.includes('earnest')) {
+        const emdMatch = line.match(/(\d{1,2}[,\d]*|\d+k)/i);
+        if (emdMatch) {
+          let emd = emdMatch[1].replace(/,/g, '');
+          if (emd.toLowerCase().endsWith('k')) {
+            emd = parseInt(emd) * 1000;
+          }
+          data.emd = String(emd);
+        }
       }
     });
-    
-    // Join captured notes
-    if (notesLines.length > 0) {
-      data.conditionNotes = notesLines.join(' ');
-    }
     
     setFormData(data);
   };
@@ -136,10 +184,8 @@ export default function OMDGenerator() {
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files);
     
-    // Process each file with compression
     const newPhotos = await Promise.all(
       files.map(async (file) => {
-        // Compress the image
         const compressedBlob = await compressImage(file, 1200, 0.8);
         const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
         
@@ -229,7 +275,6 @@ export default function OMDGenerator() {
   const publishDeal = async () => {
     setPublishing(true);
     try {
-      // Generate slug from address
       const slug = formData.address
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -237,16 +282,13 @@ export default function OMDGenerator() {
         .replace(/^-|-$/g, '')
         .substring(0, 30) + '-' + Math.random().toString(36).substring(2, 6);
       
-      // Upload photos first
       const uploadedPhotos = await uploadPhotosToSupabase(slug);
       
-      // Prepare deal data
       const dealData = {
         ...formData,
         photos: uploadedPhotos
       };
       
-      // Save to Supabase
       const response = await fetch(`${SUPABASE_URL}/rest/v1/deals`, {
         method: 'POST',
         headers: {
@@ -285,7 +327,6 @@ export default function OMDGenerator() {
     ? Number(formData.arv) - Number(formData.askingPrice) 
     : 0;
 
-  // Calculate total photo size
   const totalPhotoSize = photos.reduce((sum, p) => sum + (p.size || 0), 0);
   const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
@@ -401,14 +442,19 @@ Reply if interested`;
 
           <div style={{ background: 'white', padding: 30, borderRadius: '0 0 12px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h3>Paste Deal Info</h3>
+            <p style={{ color: '#666', fontSize: 14, marginBottom: 10 }}>Paste messy deal info - AI will extract the fields automatically.</p>
             <textarea
               value={rawInput}
               onChange={(e) => setRawInput(e.target.value)}
-              placeholder="Paste your deal details here..."
+              placeholder="Paste your deal details here - can be messy, AI will figure it out..."
               style={{ width: '100%', height: 150, padding: 15, border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical' }}
             />
-            <button onClick={parseInput} style={{ marginTop: 10, background: '#00b894', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
-              Parse Deal Info
+            <button 
+              onClick={parseInput} 
+              disabled={parsing}
+              style={{ marginTop: 10, background: parsing ? '#ccc' : '#00b894', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: parsing ? 'default' : 'pointer', fontWeight: 600 }}
+            >
+              {parsing ? 'Parsing with AI...' : 'Parse Deal Info'}
             </button>
 
             <div style={{ marginTop: 30 }}>
@@ -502,7 +548,6 @@ Reply if interested`;
     return (
       <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', background: 'white', minHeight: '100vh' }}>
-          {/* Header */}
           <div style={{ background: '#1a1a2e', color: 'white', padding: '15px 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <HouseIcon />
@@ -511,7 +556,6 @@ Reply if interested`;
             <span style={{ background: '#00b894', padding: '4px 12px', borderRadius: 20, fontSize: 12 }}>Exclusive Deal</span>
           </div>
 
-          {/* Hero */}
           {heroPhoto && (
             <div style={{ position: 'relative', height: 400 }}>
               <img src={heroPhoto.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -522,7 +566,6 @@ Reply if interested`;
             </div>
           )}
 
-          {/* Price Banner */}
           <div style={{ background: 'linear-gradient(135deg, #00b894, #00cec9)', padding: 25, textAlign: 'center', color: 'white' }}>
             <div style={{ fontSize: 14, opacity: 0.9 }}>ASKING PRICE</div>
             <div style={{ fontSize: 48, fontWeight: 'bold' }}>${formatPrice(formData.askingPrice)}</div>
@@ -531,7 +574,6 @@ Reply if interested`;
             </div>
           </div>
 
-          {/* Details */}
           <div style={{ padding: 30 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 30 }}>
               <div style={{ textAlign: 'center', padding: 20, background: '#f8f9fa', borderRadius: 12 }}>
@@ -552,7 +594,6 @@ Reply if interested`;
               </div>
             </div>
 
-            {/* Terms */}
             <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10 }}>Deal Terms</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 30 }}>
               <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8 }}>
@@ -573,11 +614,9 @@ Reply if interested`;
               </div>
             </div>
 
-            {/* Condition */}
             <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10 }}>Property Condition</h2>
             <p style={{ color: '#666', lineHeight: 1.8 }}>{formData.conditionNotes}</p>
 
-            {/* Photos */}
             {photos.length > 0 && (
               <>
                 <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10, marginTop: 30 }}>Property Photos</h2>
@@ -592,7 +631,6 @@ Reply if interested`;
               </>
             )}
 
-            {/* CTA */}
             <div style={{ textAlign: 'center', marginTop: 40, padding: 30, background: '#1a1a2e', borderRadius: 12 }}>
               <h2 style={{ color: 'white', margin: '0 0 15px' }}>Interested in this deal?</h2>
               <a href={`sms:${formData.phone}`} style={{ display: 'inline-block', background: 'linear-gradient(135deg, #00b894, #00cec9)', color: 'white', padding: '15px 40px', borderRadius: 30, textDecoration: 'none', fontWeight: 'bold', fontSize: 18 }}>
@@ -600,7 +638,6 @@ Reply if interested`;
               </a>
             </div>
 
-            {/* Full Disclosures */}
             <div style={{ marginTop: 40, padding: 20, background: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#888', lineHeight: 1.7 }}>
               <strong>Disclosures:</strong>
               <p style={{ margin: '10px 0 0' }}>
@@ -615,7 +652,6 @@ Reply if interested`;
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div style={{ padding: 20, background: '#f8f9fa', display: 'flex', gap: 10 }}>
             <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
               ← Edit
@@ -675,7 +711,6 @@ Reply if interested`;
             </button>
           </div>
 
-          {/* Buyer Teaser Section */}
           <div style={{ background: 'white', padding: 20, borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Buyer Teaser (Initial Text - No Link)</h3>
             <div style={{ background: '#f8f9fa', padding: 15, borderRadius: 8, fontFamily: 'monospace', fontSize: 14, marginBottom: 15 }}>
@@ -697,7 +732,6 @@ Reply if interested`;
             </div>
           </div>
 
-          {/* Full Text Blast */}
           <div style={{ background: 'white', padding: 20, borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Full Text Blast (For Dispo Partners)</h3>
             <pre style={{ background: '#f8f9fa', padding: 20, borderRadius: 8, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
