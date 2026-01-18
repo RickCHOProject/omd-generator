@@ -407,22 +407,16 @@ Reply if interested`;
   <div style="max-width:600px;margin:0 auto;background:#ffffff;">
     <!-- OffMarket Daily Header -->
     <div style="background:#1a1a2e;padding:20px 30px;text-align:center;">
-      <table style="margin:0 auto;">
-        <tr>
-          <td style="vertical-align:middle;padding-right:10px;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-          </td>
-          <td style="vertical-align:middle;">
-            <span style="color:white;font-size:20px;font-weight:700;">Off Market Daily</span>
-          </td>
-          <td style="vertical-align:middle;padding-left:15px;">
-            <span style="background:#00b894;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;">Exclusive Deal</span>
-          </td>
-        </tr>
-      </table>
+      <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span style="color:white;font-size:20px;font-weight:700;">Off Market Daily</span>
+      </div>
+      <div>
+        <span style="background:#00b894;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;">Exclusive Deal</span>
+      </div>
     </div>
     
     <!-- Deal Title -->
@@ -648,10 +642,9 @@ Reply if interested`;
 
   // OMD PAGE PREVIEW
   if (previewMode === 'page') {
-    const heroPhoto = photos.find(p => p.label === 'Exterior - Front') || photos[0];
     return (
-      <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', background: 'white', minHeight: '100vh' }}>
+      <div style={{ minHeight: '100vh', background: 'white' }}>
+        <div style={{ width: '100%' }}>
           <div style={{ background: '#1a1a2e', color: 'white', padding: '15px 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <HouseIcon />
@@ -1043,16 +1036,16 @@ Reply if interested`;
     return (
       <div style={{ minHeight: '100vh', background: '#f8f9fa', padding: 20 }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <div style={{ marginBottom: 20, display: 'flex', gap: 10 }}>
+          <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <div dangerouslySetInnerHTML={{ __html: generateEmailHTML() }} />
+          </div>
+          <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
             <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
               ← Edit
             </button>
             <button onClick={() => copyToClipboard(generateEmailHTML())} style={{ flex: 1, background: '#3498db', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
               Copy HTML for GHL
             </button>
-          </div>
-          <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <div dangerouslySetInnerHTML={{ __html: generateEmailHTML() }} />
           </div>
         </div>
       </div>
