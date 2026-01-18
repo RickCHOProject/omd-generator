@@ -63,6 +63,7 @@ export default function OMDGenerator() {
   const [buyerTeaser, setBuyerTeaser] = useState('');
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [activeImg, setActiveImg] = useState(0);
 
   // CLIENT-SIDE PARSER - No API needed, instant and reliable
   const parseInput = () => {
@@ -344,8 +345,29 @@ Reply if interested`;
 </head>
 <body style="margin:0;padding:0;background-color:#f5f5f5;font-family:Arial,sans-serif;">
   <div style="max-width:600px;margin:0 auto;background:#ffffff;">
-    <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:white;padding:30px;text-align:center;">
-      <h1 style="margin:0;font-size:28px;">New Deal - ${formData.city}, ${formData.state}</h1>
+    <!-- OffMarket Daily Header -->
+    <div style="background:#1a1a2e;padding:20px 30px;text-align:center;">
+      <table style="margin:0 auto;">
+        <tr>
+          <td style="vertical-align:middle;padding-right:10px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </td>
+          <td style="vertical-align:middle;">
+            <span style="color:white;font-size:20px;font-weight:700;">Off Market Daily</span>
+          </td>
+          <td style="vertical-align:middle;padding-left:15px;">
+            <span style="background:#00b894;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;">Exclusive Deal</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+    
+    <!-- Deal Title -->
+    <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:white;padding:25px 30px;text-align:center;">
+      <h1 style="margin:0;font-size:26px;">New Deal - ${formData.city}, ${formData.state}</h1>
       <p style="margin:10px 0 0;opacity:0.9;font-size:16px;">${formData.address}</p>
     </div>
     
@@ -388,12 +410,17 @@ Reply if interested`;
       </div>
       
       <div style="text-align:center;margin-top:30px;">
-        <a href="${dealUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#00b894 0%,#00cec9 100%);color:white;padding:15px 40px;text-decoration:none;border-radius:30px;font-weight:bold;font-size:16px;">View Full Details</a>
+        <a href="${dealUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#00b894 0%,#00cec9 100%);color:white;padding:15px 40px;text-decoration:none;border-radius:30px;font-weight:bold;font-size:16px;">View Full Details & Photos</a>
       </div>
     </div>
     
-    <div style="background:#1a1a2e;color:white;padding:20px;text-align:center;">
-      <p style="margin:0;opacity:0.8;">Interested? Reply to this email or call/text ${formData.phone}</p>
+    <!-- Footer -->
+    <div style="background:#1a1a2e;color:white;padding:25px;text-align:center;">
+      <p style="margin:0 0 10px;font-size:16px;font-weight:600;">Interested in this deal?</p>
+      <p style="margin:0;opacity:0.8;">Reply to this email or call/text ${formData.phone}</p>
+      <div style="margin-top:15px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.2);">
+        <span style="opacity:0.6;font-size:12px;">Off Market Daily | Exclusive Investment Properties</span>
+      </div>
     </div>
   </div>
 </body>
@@ -534,13 +561,127 @@ Reply if interested`;
             <span style={{ background: '#00b894', padding: '4px 12px', borderRadius: 20, fontSize: 12 }}>Exclusive Deal</span>
           </div>
 
-          {heroPhoto && (
-            <div style={{ position: 'relative', height: 400 }}>
-              <img src={heroPhoto.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', padding: 30 }}>
-                <h1 style={{ color: 'white', margin: 0, fontSize: 28 }}>{formData.address}</h1>
-                <p style={{ color: 'rgba(255,255,255,0.8)', margin: '5px 0 0' }}>{formData.city}, {formData.state} {formData.zip}</p>
+          {/* ZILLOW-STYLE PHOTO GALLERY AT TOP */}
+          {photos.length > 0 ? (
+            <div style={{ position: 'relative' }}>
+              {/* Main Photo Display */}
+              <div style={{ 
+                position: 'relative', 
+                height: 400,
+                background: '#1a1a2e'
+              }}>
+                <img 
+                  src={photos[activeImg]?.url} 
+                  alt="" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+                {/* Address Overlay */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', padding: 30 }}>
+                  <h1 style={{ color: 'white', margin: 0, fontSize: 28 }}>{formData.address}</h1>
+                  <p style={{ color: 'rgba(255,255,255,0.8)', margin: '5px 0 0' }}>{formData.city}, {formData.state} {formData.zip}</p>
+                </div>
+                {/* Photo Label */}
+                <div style={{ 
+                  position: 'absolute', 
+                  top: 16, 
+                  left: 16, 
+                  padding: '10px 18px', 
+                  background: '#fff', 
+                  borderRadius: 10, 
+                  fontSize: 14, 
+                  fontWeight: 600,
+                  color: '#374151',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                }}>
+                  {photos[activeImg]?.label}
+                </div>
+                {/* Photo Counter */}
+                <div style={{ 
+                  position: 'absolute', 
+                  top: 16, 
+                  right: 16, 
+                  padding: '10px 16px', 
+                  background: 'rgba(0,0,0,0.7)', 
+                  borderRadius: 10, 
+                  fontSize: 13, 
+                  color: '#fff',
+                  fontWeight: 500
+                }}>
+                  {activeImg + 1} / {photos.length}
+                </div>
+                {/* Left Arrow */}
+                {activeImg > 0 && (
+                  <button 
+                    onClick={() => setActiveImg(activeImg - 1)}
+                    style={{ 
+                      position: 'absolute', 
+                      left: 16, 
+                      top: '50%', 
+                      transform: 'translateY(-50%)',
+                      background: 'rgba(255,255,255,0.9)', 
+                      border: 'none', 
+                      color: '#1a1a2e', 
+                      fontSize: 24, 
+                      cursor: 'pointer',
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ‹
+                  </button>
+                )}
+                {/* Right Arrow */}
+                {activeImg < photos.length - 1 && (
+                  <button 
+                    onClick={() => setActiveImg(activeImg + 1)}
+                    style={{ 
+                      position: 'absolute', 
+                      right: 16, 
+                      top: '50%', 
+                      transform: 'translateY(-50%)',
+                      background: 'rgba(255,255,255,0.9)', 
+                      border: 'none', 
+                      color: '#1a1a2e', 
+                      fontSize: 24, 
+                      cursor: 'pointer',
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ›
+                  </button>
+                )}
               </div>
+
+              {/* Thumbnails */}
+              {photos.length > 1 && (
+                <div style={{ display: 'flex', gap: 8, padding: '10px 16px', background: '#f8f9fa', overflowX: 'auto' }}>
+                  {photos.map((photo, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setActiveImg(i)}
+                      style={{
+                        minWidth: 80,
+                        height: 60, 
+                        borderRadius: 8, 
+                        overflow: 'hidden', 
+                        cursor: 'pointer',
+                        border: activeImg === i ? '3px solid #00b894' : '3px solid transparent',
+                        opacity: activeImg === i ? 1 : 0.7,
+                        flexShrink: 0
+                      }}
+                    >
+                      <img src={photo.url} alt={photo.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ height: 200, background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+              No photos uploaded
             </div>
           )}
 
@@ -594,20 +735,6 @@ Reply if interested`;
 
             <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10 }}>Property Condition</h2>
             <p style={{ color: '#666', lineHeight: 1.8 }}>{formData.conditionNotes}</p>
-
-            {photos.length > 0 && (
-              <>
-                <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10, marginTop: 30 }}>Property Photos</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  {photos.map((photo, i) => (
-                    <div key={i}>
-                      <img src={photo.url} alt="" style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 8 }} />
-                      <div style={{ fontSize: 12, color: '#666', marginTop: 5 }}>{photo.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
 
             <div style={{ textAlign: 'center', marginTop: 40, padding: 30, background: '#1a1a2e', borderRadius: 12 }}>
               <h2 style={{ color: 'white', margin: '0 0 15px' }}>Interested in this deal?</h2>
