@@ -194,8 +194,6 @@ export default function OMDGenerator() {
       </table>
     </div>
 
-    ${photos.length > 0 ? `<div style="width:100%;height:250px;background:#e2e8f0;"><img src="{{HERO_IMAGE}}" style="width:100%;height:250px;object-fit:cover;" alt="Property" /></div>` : ''}
-
     <div style="background:#1e40af;padding:28px;text-align:center;">
       <div style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">New Deal in ${formData.city}, ${formData.state}</div>
       <div style="color:#fff;font-size:38px;font-weight:bold;">${formatCurrency(formData.askingPrice)}</div>
