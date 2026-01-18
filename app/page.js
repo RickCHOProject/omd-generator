@@ -13,6 +13,8 @@ export default function OMDGenerator() {
   const [labeling, setLabeling] = useState(false);
   const [buyerTeaser, setBuyerTeaser] = useState('');
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
+  const [dealUrl, setDealUrl] = useState('');
+  const [publishing, setPublishing] = useState(false);
   
   const [formData, setFormData] = useState({
     address: '', city: '', state: '', zip: '',
@@ -195,6 +197,36 @@ export default function OMDGenerator() {
     setGeneratingTeaser(false);
   };
 
+  const publishDeal = () => {
+    setPublishing(true);
+    try {
+      // Create deal data object (without photo file objects, just URLs)
+      const dealData = {
+        ...formData,
+        photos: photos.map(p => ({ url: p.url, label: p.label }))
+      };
+      
+      // Encode as base64
+      const encoded = btoa(JSON.stringify(dealData));
+      
+      // Create URL
+      const baseUrl = window.location.origin;
+      const url = `${baseUrl}/d?d=${encoded}`;
+      
+      setDealUrl(url);
+    } catch (err) {
+      console.error('Publish error:', err);
+      alert('Error publishing deal');
+    }
+    setPublishing(false);
+  };
+
+  const copyDealUrl = () => {
+    navigator.clipboard.writeText(dealUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   // House Icon SVG Component
   const HouseIcon = ({ size = 24 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -291,7 +323,7 @@ export default function OMDGenerator() {
     </div>` : ''}
 
     <div style="padding:24px;">
-      <a href="{{DEAL_LINK}}" style="display:block;text-align:center;background:#16a34a;color:#fff;padding:18px 24px;border-radius:12px;text-decoration:none;font-size:16px;font-weight:bold;">View Full Details →</a>
+      <a href="${dealUrl || '{{DEAL_LINK}}'}" style="display:block;text-align:center;background:#16a34a;color:#fff;padding:18px 24px;border-radius:12px;text-decoration:none;font-size:16px;font-weight:bold;">View Full Details →</a>
       <div style="text-align:center;margin-top:12px;color:#64748b;font-size:14px;">Or call/text: <span style="font-weight:600;color:#374151;">${formData.phone}</span></div>
     </div>
 
@@ -694,7 +726,16 @@ Reply if interested`;
           <button onClick={() => setViewMode('desktop')} style={{ padding: '8px 16px', background: viewMode === 'desktop' ? '#3b82f6' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>Desktop</button>
           <button onClick={() => setViewMode('mobile')} style={{ padding: '8px 16px', background: viewMode === 'mobile' ? '#3b82f6' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>Mobile</button>
         </div>
-        <button style={{ padding: '8px 20px', background: '#16a34a', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Share Deal</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {dealUrl ? (
+            <>
+              <input value={dealUrl} readOnly style={{ width: 280, padding: '8px 12px', borderRadius: 8, border: 'none', fontSize: 12, background: 'rgba(255,255,255,0.1)', color: '#fff' }} />
+              <button onClick={copyDealUrl} style={{ padding: '8px 16px', background: copied ? '#16a34a' : '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{copied ? '✓ Copied!' : 'Copy'}</button>
+            </>
+          ) : (
+            <button onClick={publishDeal} disabled={publishing} style={{ padding: '8px 20px', background: publishing ? '#94a3b8' : '#16a34a', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{publishing ? 'Publishing...' : 'Publish Deal'}</button>
+          )}
+        </div>
       </div>
 
       <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
