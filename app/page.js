@@ -238,6 +238,16 @@ export default function OMDGenerator() {
     setPhotos(updated);
   };
 
+  const movePhoto = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= photos.length) return;
+    const updated = [...photos];
+    const temp = updated[index];
+    updated[index] = updated[newIndex];
+    updated[newIndex] = temp;
+    setPhotos(updated);
+  };
+
   const removePhoto = (index) => {
     const updated = photos.filter((_, i) => i !== index);
     setPhotos(updated);
@@ -593,6 +603,23 @@ Reply if interested`;
                       <option>Other</option>
                     </select>
                     <button onClick={() => removePhoto(index)} style={{ position: 'absolute', top: 5, right: 5, background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer' }}>×</button>
+                    {/* Move buttons */}
+                    <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
+                      <button 
+                        onClick={() => movePhoto(index, -1)} 
+                        disabled={index === 0}
+                        style={{ flex: 1, padding: '4px', fontSize: 12, cursor: index === 0 ? 'default' : 'pointer', background: index === 0 ? '#eee' : '#ddd', border: 'none', borderRadius: 4 }}
+                      >
+                        ←
+                      </button>
+                      <button 
+                        onClick={() => movePhoto(index, 1)} 
+                        disabled={index === photos.length - 1}
+                        style={{ flex: 1, padding: '4px', fontSize: 12, cursor: index === photos.length - 1 ? 'default' : 'pointer', background: index === photos.length - 1 ? '#eee' : '#ddd', border: 'none', borderRadius: 4 }}
+                      >
+                        →
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
