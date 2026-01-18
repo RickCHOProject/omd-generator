@@ -599,7 +599,11 @@ Reply if interested`;
             </div>
 
             <div style={{ marginTop: 30, display: 'flex', gap: 10 }}>
-              <button onClick={() => setPreviewMode('page')} style={{ flex: 1, background: '#00b894', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
+              <button onClick={() => { 
+                const extIdx = photos.findIndex(p => p.label === 'Exterior - Front');
+                setActiveImg(extIdx >= 0 ? extIdx : 0);
+                setPreviewMode('page'); 
+              }} style={{ flex: 1, background: '#00b894', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
                 OMD Page →
               </button>
               <button onClick={() => setPreviewMode('email')} style={{ flex: 1, background: '#3498db', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
