@@ -12,6 +12,41 @@ const HouseIcon = () => (
   </svg>
 );
 
+// Image compression function - resizes to max 1200px width
+const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Only resize if larger than maxWidth
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob(
+          (blob) => resolve(blob),
+          'image/jpeg',
+          quality
+        );
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function OMDGenerator() {
   const [rawInput, setRawInput] = useState('');
   const [formData, setFormData] = useState({
@@ -24,15 +59,33 @@ export default function OMDGenerator() {
   const [previewMode, setPreviewMode] = useState(null);
   const [dealUrl, setDealUrl] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [buyerTeaser, setBuyerTeaser] = useState('');
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
 
   const parseInput = () => {
     const lines = rawInput.split('\n');
     const data = { ...formData };
+    let notesLines = [];
+    let capturingNotes = false;
     
     lines.forEach(line => {
       const lower = line.toLowerCase();
+      
+      // Check if we're starting notes section
+      if (lower.includes('notes:') || lower.includes('condition:')) {
+        capturingNotes = true;
+        const afterColon = line.split(':').slice(1).join(':').trim();
+        if (afterColon) notesLines.push(afterColon);
+        return;
+      }
+      
+      // If capturing notes, keep adding lines
+      if (capturingNotes) {
+        if (line.trim()) notesLines.push(line.trim());
+        return;
+      }
+      
       if (lower.includes('address:')) {
         const full = line.split(':').slice(1).join(':').trim();
         const parts = full.split(',').map(p => p.trim());
@@ -70,21 +123,36 @@ export default function OMDGenerator() {
       else if (lower.includes('hoa:')) {
         data.hoa = line.split(':').slice(1).join(':').trim();
       }
-      else if (lower.includes('notes:') || lower.includes('condition:')) {
-        data.conditionNotes = line.split(':').slice(1).join(':').trim();
-      }
     });
+    
+    // Join captured notes
+    if (notesLines.length > 0) {
+      data.conditionNotes = notesLines.join(' ');
+    }
     
     setFormData(data);
   };
 
-  const handlePhotoUpload = (e) => {
+  const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files);
-    const newPhotos = files.map(file => ({
-      file,
-      url: URL.createObjectURL(file),
-      label: 'Other'
-    }));
+    
+    // Process each file with compression
+    const newPhotos = await Promise.all(
+      files.map(async (file) => {
+        // Compress the image
+        const compressedBlob = await compressImage(file, 1200, 0.8);
+        const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+        
+        return {
+          file: compressedFile,
+          originalFile: file,
+          url: URL.createObjectURL(compressedBlob),
+          label: 'Other',
+          size: compressedBlob.size
+        };
+      })
+    );
+    
     setPhotos([...photos, ...newPhotos]);
   };
 
@@ -134,6 +202,8 @@ export default function OMDGenerator() {
       const photo = photos[i];
       if (!photo.file) continue;
       
+      setUploadProgress(`Uploading photo ${i + 1} of ${photos.length}...`);
+      
       const fileName = `${slug}/${i}-${photo.label.toLowerCase().replace(/\s+/g, '-')}.jpg`;
       
       const response = await fetch(`${SUPABASE_URL}/storage/v1/object/deal-photos/${fileName}`, {
@@ -141,7 +211,7 @@ export default function OMDGenerator() {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': photo.file.type
+          'Content-Type': 'image/jpeg'
         },
         body: photo.file
       });
@@ -152,6 +222,7 @@ export default function OMDGenerator() {
       }
     }
     
+    setUploadProgress('');
     return uploadedUrls;
   };
 
@@ -213,6 +284,14 @@ export default function OMDGenerator() {
   const spread = formData.arv && formData.askingPrice 
     ? Number(formData.arv) - Number(formData.askingPrice) 
     : 0;
+
+  // Calculate total photo size
+  const totalPhotoSize = photos.reduce((sum, p) => sum + (p.size || 0), 0);
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
 
   const generateTextBlast = () => {
     return `New Deal - ${formData.city}, ${formData.state}
@@ -361,11 +440,16 @@ Reply if interested`;
 
             <div style={{ marginTop: 30 }}>
               <h3>Photos</h3>
+              <p style={{ color: '#666', fontSize: 14, marginBottom: 10 }}>
+                Photos are automatically compressed to ~1200px for fast loading.
+                {photos.length > 0 && ` Total size: ${formatSize(totalPhotoSize)}`}
+              </p>
               <input type="file" multiple accept="image/*" onChange={handlePhotoUpload} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 15 }}>
                 {photos.map((photo, index) => (
                   <div key={index} style={{ position: 'relative' }}>
                     <img src={photo.url} alt="" style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 8 }} />
+                    <div style={{ fontSize: 10, color: '#999', textAlign: 'center' }}>{formatSize(photo.size)}</div>
                     <select
                       value={photo.label}
                       onChange={(e) => labelPhoto(index, e.target.value)}
@@ -373,11 +457,20 @@ Reply if interested`;
                     >
                       <option>Exterior - Front</option>
                       <option>Exterior - Back</option>
+                      <option>Exterior - Side</option>
                       <option>Kitchen</option>
                       <option>Living Room</option>
+                      <option>Dining Room</option>
+                      <option>Master Bedroom</option>
                       <option>Bedroom</option>
+                      <option>Master Bathroom</option>
                       <option>Bathroom</option>
                       <option>Garage</option>
+                      <option>Backyard</option>
+                      <option>Pool</option>
+                      <option>Laundry</option>
+                      <option>Basement</option>
+                      <option>Attic</option>
                       <option>Other</option>
                     </select>
                     <button onClick={() => removePhoto(index)} style={{ position: 'absolute', top: 5, right: 5, background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer' }}>×</button>
@@ -507,9 +600,18 @@ Reply if interested`;
               </a>
             </div>
 
-            {/* Disclosures */}
-            <div style={{ marginTop: 40, padding: 20, background: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#888' }}>
-              <strong>Disclosures:</strong> This property is being sold "as-is, where-is" with no warranties expressed or implied. Buyer is responsible for conducting their own due diligence including but not limited to property inspections, title search, and verification of all information provided. Seller makes no representations regarding the accuracy of the ARV (After Repair Value) estimate, repair costs, or property condition. All figures are estimates only. Buyer assumes all risk. This is an assignment of contract/wholesale transaction. Earnest money deposit is non-refundable after inspection period. Buyer must provide proof of funds prior to contract execution. Closing timeline is subject to title clearance. Property may be subject to liens, encumbrances, or code violations not disclosed herein. It is the Buyer's sole responsibility to verify zoning, permits, HOA restrictions, and any other factors that may affect the property's value or intended use.
+            {/* Full Disclosures */}
+            <div style={{ marginTop: 40, padding: 20, background: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#888', lineHeight: 1.7 }}>
+              <strong>Disclosures:</strong>
+              <p style={{ margin: '10px 0 0' }}>
+                House is being sold as-is, and the buyer is to pay all closing costs. $7,000 Non-Refundable earnest money to be deposited by NOON of the following day or contract will be cancelled. Buyer must close with cash or hard money loan. The buyer is not relying on any representations, whether written or oral, regarding the properties above. Price based on a cash or hard money offer and is net to seller. Buyers to do their own independent due diligence. Buyer must do your own due diligence, evaluation and inspection prior to making an offer. Determining value is the buyer's responsibility. Seller strongly recommends buyers employ an Investment Realtor to help determine value. Any reference to the value of a property by the Seller or any representative of the Seller is an opinion of value. Everyone has a differing opinion on value, cost of construction, materials, quality of workmanship and market speculation. Value is ultimately the buyer's responsibility and they should be diligent in determining market value.
+              </p>
+              <p style={{ margin: '15px 0 0' }}>
+                <strong>REALTORS:</strong> If you are currently working with a client, and wish to receive a commission, please note that the wholesale price does not include your commission. You may want to negotiate a commission with your client separate from the wholesale price or you may adjust the wholesale price upwards to include your commission.
+              </p>
+              <p style={{ margin: '15px 0 0' }}>
+                <strong>WHOLESALERS:</strong> If you'd like to JV on this deal send us a text message, email, or call to let us know you are going to be sharing our deal with your investors.
+              </p>
             </div>
           </div>
 
@@ -523,7 +625,7 @@ Reply if interested`;
               disabled={publishing}
               style={{ flex: 1, background: '#00b894', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
             >
-              {publishing ? 'Publishing...' : 'Publish Deal'}
+              {publishing ? (uploadProgress || 'Publishing...') : 'Publish Deal'}
             </button>
           </div>
 
