@@ -164,10 +164,10 @@ export default function DealPage() {
             alignItems: 'center',
             justifyContent: 'space-between'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <a href="https://offmarketdaily.com" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'white' }}>
               <HouseIcon />
               <span style={{ fontWeight: 700, fontSize: 18 }}>Off Market Daily</span>
-            </div>
+            </a>
             <span style={{
               background: '#00b894',
               padding: '6px 14px',
