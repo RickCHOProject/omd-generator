@@ -1,36 +1,30 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
-
 const HouseIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
     <polyline points="9 22 9 12 15 12 15 22"></polyline>
   </svg>
 );
-
 const ChevronLeft = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="15 18 9 12 15 6"></polyline>
   </svg>
 );
-
 const ChevronRight = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="9 18 15 12 9 6"></polyline>
   </svg>
 );
-
 const CloseIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="18" y1="6" x2="6" y2="18"></line>
     <line x1="6" y1="6" x2="18" y2="18"></line>
   </svg>
 );
-
 export default function DealPage() {
   const params = useParams();
   const [deal, setDeal] = useState(null);
@@ -38,7 +32,6 @@ export default function DealPage() {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
-
   useEffect(() => {
     const fetchDeal = async () => {
       try {
@@ -55,7 +48,6 @@ export default function DealPage() {
     };
     if (params.slug) fetchDeal();
   }, [params.slug]);
-
   // Keyboard navigation for lightbox
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -70,9 +62,7 @@ export default function DealPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, galleryOpen, selectedPhotoIndex, deal]);
-
   const formatPrice = (num) => num ? Number(num).toLocaleString() : '';
-
   const navigatePhoto = (direction) => {
     if (!deal?.photos?.length) return;
     const newIndex = selectedPhotoIndex + direction;
@@ -80,12 +70,10 @@ export default function DealPage() {
       setSelectedPhotoIndex(newIndex);
     }
   };
-
   const openLightbox = (index) => {
     setSelectedPhotoIndex(index);
     setLightboxOpen(true);
   };
-
   if (loading) {
     return (
       <div style={{
@@ -112,7 +100,6 @@ export default function DealPage() {
       </div>
     );
   }
-
   if (!deal) {
     return (
       <div style={{
@@ -131,13 +118,11 @@ export default function DealPage() {
       </div>
     );
   }
-
   const spread = (Number(deal.arv) || 0) - (Number(deal.askingPrice) || 0);
   const photos = deal.photos || [];
   const heroPhoto = photos[selectedPhotoIndex] || photos[0];
   const maxThumbnails = 5;
   const remainingPhotos = photos.length - maxThumbnails;
-
   return (
     <>
       {/* Main Page */}
@@ -176,7 +161,6 @@ export default function DealPage() {
               fontWeight: 600
             }}>Exclusive Deal</span>
           </div>
-
           {/* Hero Image Section */}
           {heroPhoto && (
             <div style={{ position: 'relative' }}>
@@ -239,7 +223,6 @@ export default function DealPage() {
                   }}>{deal.city}, {deal.state} {deal.zip}</p>
                 </div>
               </div>
-
               {/* Thumbnail Strip */}
               {photos.length > 1 && (
                 <div style={{
@@ -301,7 +284,6 @@ export default function DealPage() {
               )}
             </div>
           )}
-
           {/* Price Banner */}
           <div style={{
             background: 'linear-gradient(135deg, #00b894, #00cec9)',
@@ -327,7 +309,6 @@ export default function DealPage() {
               ARV: ${formatPrice(deal.arv)} &nbsp;|&nbsp; Spread: ${formatPrice(spread)}
             </div>
           </div>
-
           {/* Details Section */}
           <div style={{ padding: 'clamp(20px, 5vw, 40px)' }}>
             
@@ -362,7 +343,6 @@ export default function DealPage() {
                 </div>
               ))}
             </div>
-
             {/* Deal Terms */}
             <h2 style={{
               color: '#1a1a2e',
@@ -394,7 +374,6 @@ export default function DealPage() {
                 </div>
               ))}
             </div>
-
             {/* Condition Notes */}
             {deal.conditionNotes && (
               <>
@@ -413,7 +392,6 @@ export default function DealPage() {
                 }}>{deal.conditionNotes}</p>
               </>
             )}
-
             {/* Photo Grid */}
             {photos.length > 0 && (
               <>
@@ -497,7 +475,6 @@ export default function DealPage() {
                 )}
               </>
             )}
-
             {/* CTA Section */}
             <div style={{
               textAlign: 'center',
@@ -550,7 +527,6 @@ export default function DealPage() {
                 </a>
               </div>
             </div>
-
             {/* Full Disclosures */}
             <div style={{
               marginTop: 45,
@@ -575,7 +551,6 @@ export default function DealPage() {
           </div>
         </div>
       </div>
-
       {/* Lightbox Modal */}
       {lightboxOpen && photos.length > 0 && (
         <div
@@ -611,7 +586,6 @@ export default function DealPage() {
           >
             <CloseIcon />
           </button>
-
           {/* Photo Counter */}
           <div style={{
             position: 'absolute',
@@ -624,7 +598,6 @@ export default function DealPage() {
           }}>
             {selectedPhotoIndex + 1} / {photos.length}
           </div>
-
           {/* Previous Button */}
           {selectedPhotoIndex > 0 && (
             <button
@@ -649,7 +622,6 @@ export default function DealPage() {
               <ChevronLeft />
             </button>
           )}
-
           {/* Main Image */}
           <img
             onClick={(e) => e.stopPropagation()}
@@ -662,7 +634,6 @@ export default function DealPage() {
               borderRadius: 8
             }}
           />
-
           {/* Next Button */}
           {selectedPhotoIndex < photos.length - 1 && (
             <button
@@ -687,7 +658,6 @@ export default function DealPage() {
               <ChevronRight />
             </button>
           )}
-
           {/* Photo Label */}
           <div style={{
             position: 'absolute',
@@ -704,7 +674,6 @@ export default function DealPage() {
           </div>
         </div>
       )}
-
       {/* Full Gallery Modal */}
       {galleryOpen && photos.length > 0 && (
         <div style={{
@@ -737,7 +706,6 @@ export default function DealPage() {
           >
             <CloseIcon />
           </button>
-
           {/* Gallery Title */}
           <h2 style={{
             color: 'white',
@@ -745,7 +713,6 @@ export default function DealPage() {
             marginBottom: 30,
             fontSize: 24
           }}>All {photos.length} Photos</h2>
-
           {/* Photo Grid */}
           <div style={{
             maxWidth: 1000,
