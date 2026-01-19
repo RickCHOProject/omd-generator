@@ -134,8 +134,6 @@ export default function DealPage() {
         {/* Full Width Container */}
         <div style={{ 
           width: '100%',
-          maxWidth: 1200, 
-          margin: '0 auto', 
           background: 'white',
           minHeight: '100vh'
         }}>
