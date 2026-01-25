@@ -398,85 +398,148 @@ Reply if interested`;
 
   const generateEmailHTML = () => {
     return `<!DOCTYPE html>
-<html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>New Deal - ${formData.city}, ${formData.state}</title>
+  <style type="text/css">
+    body, table, td { font-family: Arial, sans-serif; }
+    img { border: 0; display: block; }
+    a { color: #ffffff; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f5f5f5;font-family:Arial,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;background:#ffffff;">
-    <!-- OffMarket Daily Header -->
-    <div style="background:#1a1a2e;padding:20px 30px;text-align:center;">
-    <a href="https://offmarketdaily.com" style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;text-decoration:none;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
-        <span style="color:white;font-size:20px;font-weight:700;">Off Market Daily</span>
-      </a>
-      <div>
-        <span style="background:#00b894;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;">Exclusive Deal</span>
-      </div>
-    </div>
-    
-    <!-- Deal Title -->
-    <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:white;padding:25px 30px;text-align:center;">
-      <h1 style="margin:0;font-size:26px;">New Deal - ${formData.city}, ${formData.state}</h1>
-      <p style="margin:10px 0 0;opacity:0.9;font-size:16px;">${formData.address}</p>
-    </div>
-    
-    <div style="background:linear-gradient(135deg,#00b894 0%,#00cec9 100%);padding:25px;text-align:center;">
-      <div style="font-size:14px;opacity:0.9;color:white;">ASKING PRICE</div>
-      <div style="font-size:42px;font-weight:bold;color:white;">$${formatPrice(formData.askingPrice)}</div>
-      <div style="margin-top:15px;display:inline-block;background:rgba(255,255,255,0.2);padding:8px 20px;border-radius:20px;">
-        <span style="color:white;font-size:14px;">ARV: $${formatPrice(formData.arv)} | Spread: $${formatPrice(spread)}</span>
-      </div>
-    </div>
-    
-    <div style="padding:30px;">
-      <h2 style="color:#1a1a2e;border-bottom:2px solid #00b894;padding-bottom:10px;">Property Details</h2>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="padding:12px 0;border-bottom:1px solid #eee;color:#666;">Beds/Baths</td>
-          <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">${formData.beds}/${formData.baths}</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 0;border-bottom:1px solid #eee;color:#666;">Square Feet</td>
-          <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">${formatPrice(formData.sqft)}</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 0;border-bottom:1px solid #eee;color:#666;">Year Built</td>
-          <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">${formData.yearBuilt}</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 0;border-bottom:1px solid #eee;color:#666;">COE</td>
-          <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:bold;">${formData.coe}</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 0;color:#666;">EMD</td>
-          <td style="padding:12px 0;text-align:right;font-weight:bold;">$${formatPrice(formData.emd)}</td>
-        </tr>
-      </table>
-      
-      <div style="margin-top:25px;padding:20px;background:#f8f9fa;border-radius:8px;">
-        <h3 style="margin:0 0 10px;color:#1a1a2e;">Condition Notes</h3>
-        <p style="margin:0;color:#666;line-height:1.6;">${formData.conditionNotes}</p>
-      </div>
-      
-      <div style="text-align:center;margin-top:30px;">
-        <a href="${dealUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#00b894 0%,#00cec9 100%);color:white;padding:15px 40px;text-decoration:none;border-radius:30px;font-weight:bold;font-size:16px;">View Full Details & Photos</a>
-      </div>
-    </div>
-    
-    <!-- Footer -->
-    <div style="background:#1a1a2e;color:white;padding:25px;text-align:center;">
-      <p style="margin:0 0 10px;font-size:16px;font-weight:600;">Interested in this deal?</p>
-      <p style="margin:0;opacity:0.8;">Reply to this email or call/text ${formData.phone}</p>
-      <div style="margin-top:15px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.2);">
-        <span style="opacity:0.6;font-size:12px;">Off Market Daily | Exclusive Investment Properties</span>
-      </div>
-    </div>
-  </div>
+<body style="margin:0;padding:0;background-color:#f5f5f5;">
+  
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f5f5;">
+    <tr>
+      <td align="center" valign="top" style="padding:20px 10px;">
+        
+        <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color:#ffffff;">
+          
+          <tr>
+            <td align="center" valign="middle" bgcolor="#1a1a2e" style="background-color:#1a1a2e;padding:20px 30px;">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="color:#ffffff;font-size:20px;font-weight:700;font-family:Arial,sans-serif;">
+                    Off Market Daily
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top:10px;">
+                    <table border="0" cellpadding="0" cellspacing="0" bgcolor="#00b894" style="background-color:#00b894;border-radius:20px;">
+                      <tr>
+                        <td style="padding:4px 12px;font-size:11px;font-weight:600;color:#ffffff;font-family:Arial,sans-serif;">Exclusive Deal</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <tr>
+            <td align="center" valign="middle" bgcolor="#16213e" style="background-color:#16213e;padding:25px 30px;">
+              <h1 style="margin:0;font-size:26px;color:#ffffff;font-family:Arial,sans-serif;">New Deal - ${formData.city}, ${formData.state}</h1>
+              <p style="margin:10px 0 0;font-size:16px;color:#cccccc;font-family:Arial,sans-serif;">${formData.address}</p>
+            </td>
+          </tr>
+          
+          <tr>
+            <td align="center" valign="middle" bgcolor="#00b894" style="background-color:#00b894;padding:25px 20px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center" style="font-size:14px;color:#ffffff;font-family:Arial,sans-serif;">ASKING PRICE</td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-size:42px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;padding:5px 0;">$${formatPrice(formData.askingPrice)}</td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top:10px;">
+                    <table border="0" cellpadding="0" cellspacing="0" bgcolor="#008577" style="background-color:#008577;border-radius:20px;">
+                      <tr>
+                        <td style="padding:8px 20px;font-size:14px;color:#ffffff;font-family:Arial,sans-serif;">
+                          ARV: $${formatPrice(formData.arv)} | Spread: $${formatPrice(spread)}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="padding:30px;">
+              <h2 style="margin:0 0 15px;font-size:20px;color:#1a1a2e;font-family:Arial,sans-serif;border-bottom:2px solid #00b894;padding-bottom:10px;">Property Details</h2>
+              
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #eeeeee;color:#666666;font-family:Arial,sans-serif;">Beds/Baths</td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #eeeeee;font-weight:bold;font-family:Arial,sans-serif;">${formData.beds}/${formData.baths}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #eeeeee;color:#666666;font-family:Arial,sans-serif;">Square Feet</td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #eeeeee;font-weight:bold;font-family:Arial,sans-serif;">${formatPrice(formData.sqft)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #eeeeee;color:#666666;font-family:Arial,sans-serif;">Year Built</td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #eeeeee;font-weight:bold;font-family:Arial,sans-serif;">${formData.yearBuilt}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #eeeeee;color:#666666;font-family:Arial,sans-serif;">COE</td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #eeeeee;font-weight:bold;font-family:Arial,sans-serif;">${formData.coe}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;color:#666666;font-family:Arial,sans-serif;">EMD</td>
+                  <td align="right" style="padding:12px 0;font-weight:bold;font-family:Arial,sans-serif;">$${formatPrice(formData.emd)}</td>
+                </tr>
+              </table>
+              
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:25px;">
+                <tr>
+                  <td bgcolor="#f8f9fa" style="background-color:#f8f9fa;padding:20px;">
+                    <h3 style="margin:0 0 10px;font-size:16px;color:#1a1a2e;font-family:Arial,sans-serif;">Condition Notes</h3>
+                    <p style="margin:0;color:#666666;line-height:1.6;font-family:Arial,sans-serif;">${formData.conditionNotes}</p>
+                  </td>
+                </tr>
+              </table>
+              
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:30px;">
+                <tr>
+                  <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td bgcolor="#00b894" style="background-color:#00b894;border-radius:30px;padding:14px 40px;" align="center">
+                          <a href="${dealUrl || '#'}" style="text-decoration:none;">
+                            <span style="display:inline-block;text-decoration:none !important;">
+                              <span style="color:#ffffff;font-size:16px;font-family:Arial,sans-serif;font-weight:bold;text-decoration:none !important;">View Full Details &amp; Photos</span>
+                            </span>
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <tr>
+            <td align="center" bgcolor="#1a1a2e" style="background-color:#1a1a2e;padding:25px;">
+              <p style="margin:0 0 10px;font-size:16px;font-weight:600;color:#ffffff;font-family:Arial,sans-serif;">Interested in this deal?</p>
+              <p style="margin:0;font-size:14px;color:#cccccc;font-family:Arial,sans-serif;">Reply to this email or call/text ${formData.phone}</p>
+              <p style="margin:15px 0 0;font-size:12px;color:#888888;font-family:Arial,sans-serif;">Off Market Daily | Exclusive Investment Properties</p>
+            </td>
+          </tr>
+          
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+  
 </body>
 </html>`;
   };
