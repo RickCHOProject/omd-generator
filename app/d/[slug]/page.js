@@ -208,11 +208,13 @@ export default function DealPage() {
         background: '#f8f9fa',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
-        {/* Full Width Container */}
+        {/* Contained Page — Zillow-style centered layout */}
         <div style={{ 
-          width: '100%',
+          maxWidth: 1100,
+          margin: '0 auto',
           background: 'white',
-          minHeight: '100vh'
+          minHeight: '100vh',
+          boxShadow: '0 0 30px rgba(0,0,0,0.08)'
         }}>
           
           {/* Header */}
@@ -246,9 +248,7 @@ export default function DealPage() {
                 style={{
                   position: 'relative',
                   width: '100%',
-                  maxWidth: 1400,
-                  margin: '0 auto',
-                  paddingTop: 'min(56.25%, 600px)',
+                  paddingTop: 'min(56.25%, 550px)',
                   cursor: 'pointer',
                   overflow: 'hidden'
                 }}
