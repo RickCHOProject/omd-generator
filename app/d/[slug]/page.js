@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
@@ -32,6 +32,14 @@ export default function DealPage() {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+
+  // === SWIPE SUPPORT (NEW) ===
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const heroTouchStartX = useRef(0);
+  const heroTouchEndX = useRef(0);
+  // === END SWIPE SUPPORT ===
+
   useEffect(() => {
     const fetchDeal = async () => {
       try {
@@ -48,6 +56,43 @@ export default function DealPage() {
     };
     if (params.slug) fetchDeal();
   }, [params.slug]);
+
+  // === VIEW TRACKING (NEW) — fires once on page load, fails silently ===
+  useEffect(() => {
+    if (!params.slug) return;
+    try {
+      // Generate or retrieve a visitor ID so we can see repeat visitors
+      let visitorId = null;
+      try {
+        visitorId = localStorage.getItem('omd_visitor_id');
+        if (!visitorId) {
+          visitorId = 'v_' + Math.random().toString(36).substr(2, 12) + Date.now().toString(36);
+          localStorage.setItem('omd_visitor_id', visitorId);
+        }
+      } catch (e) {
+        visitorId = 'anon_' + Math.random().toString(36).substr(2, 8);
+      }
+      fetch(`${SUPABASE_URL}/rest/v1/deal_views`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          deal_slug: params.slug,
+          visitor_id: visitorId,
+          referrer: typeof document !== 'undefined' ? document.referrer || null : null,
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+        })
+      }).catch(() => {}); // Fail silently — never break the page
+    } catch (e) {
+      // Tracking should NEVER break the deal page
+    }
+  }, [params.slug]);
+  // === END VIEW TRACKING ===
+
   // Keyboard navigation for lightbox
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -74,6 +119,38 @@ export default function DealPage() {
     setSelectedPhotoIndex(index);
     setLightboxOpen(true);
   };
+
+  // === SWIPE HANDLERS (NEW) ===
+  const handleSwipeEnd = (startX, endX) => {
+    const diff = startX - endX;
+    const minSwipeDistance = 50;
+    if (Math.abs(diff) < minSwipeDistance) return;
+    if (diff > 0) {
+      // Swiped left → next photo
+      navigatePhoto(1);
+    } else {
+      // Swiped right → previous photo
+      navigatePhoto(-1);
+    }
+  };
+
+  const heroSwipeHandlers = {
+    onTouchStart: (e) => { heroTouchStartX.current = e.touches[0].clientX; },
+    onTouchEnd: (e) => {
+      heroTouchEndX.current = e.changedTouches[0].clientX;
+      handleSwipeEnd(heroTouchStartX.current, heroTouchEndX.current);
+    }
+  };
+
+  const lightboxSwipeHandlers = {
+    onTouchStart: (e) => { touchStartX.current = e.touches[0].clientX; },
+    onTouchEnd: (e) => {
+      touchEndX.current = e.changedTouches[0].clientX;
+      handleSwipeEnd(touchStartX.current, touchEndX.current);
+    }
+  };
+  // === END SWIPE HANDLERS ===
+
   if (loading) {
     return (
       <div style={{
@@ -162,13 +239,16 @@ export default function DealPage() {
           {/* Hero Image Section */}
           {heroPhoto && (
             <div style={{ position: 'relative' }}>
-              {/* Main Image - Click to Enlarge */}
+              {/* Main Image - Click to Enlarge, SWIPE to navigate */}
               <div
                 onClick={() => openLightbox(selectedPhotoIndex)}
+                {...heroSwipeHandlers}
                 style={{
                   position: 'relative',
                   width: '100%',
-                  paddingTop: '56.25%', /* 16:9 aspect ratio */
+                  maxWidth: 1400,
+                  margin: '0 auto',
+                  paddingTop: 'min(56.25%, 600px)',
                   cursor: 'pointer',
                   overflow: 'hidden'
                 }}
@@ -197,7 +277,7 @@ export default function DealPage() {
                   fontSize: 12,
                   fontWeight: 500
                 }}>
-                  Click to enlarge
+                  {photos.length > 1 ? 'Swipe or click to enlarge' : 'Click to enlarge'}
                 </div>
                 {/* Address overlay */}
                 <div style={{
@@ -549,10 +629,11 @@ export default function DealPage() {
           </div>
         </div>
       </div>
-      {/* Lightbox Modal */}
+      {/* Lightbox Modal — NOW WITH SWIPE */}
       {lightboxOpen && photos.length > 0 && (
         <div
           onClick={() => setLightboxOpen(false)}
+          {...lightboxSwipeHandlers}
           style={{
             position: 'fixed',
             inset: 0,
