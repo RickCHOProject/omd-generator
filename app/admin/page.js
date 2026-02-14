@@ -29,6 +29,7 @@ export default function AdminPage() {
   const [viewDetails, setViewDetails] = useState(null);
   const [viewDetailData, setViewDetailData] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [emailHTML, setEmailHTML] = useState('');
 
   // Fetch all deals
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function AdminPage() {
     setEditingDeal(deal);
     setEditData({ ...deal.data });
     setSaveMsg('');
+    setEmailHTML('');
   };
 
   const updateField = (field, value) => {
@@ -120,6 +122,161 @@ export default function AdminPage() {
     } catch (err) {
       alert('Error: ' + err.message);
     }
+  };
+
+  const fmtPrice = (num) => {
+    if (!num) return '';
+    return Number(num).toLocaleString();
+  };
+
+  const generateEmailHTML = (data, slug) => {
+    const spread = (Number(data.arv) || 0) - (Number(data.askingPrice) || 0);
+    const dealLink = `https://deals.offmarketdaily.com/d/${slug}`;
+    return `<!DOCTYPE html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>New Deal - ${data.city}, ${data.state}</title>
+  <style type="text/css">
+    body, table, td { font-family: Arial, sans-serif; }
+    img { border: 0; display: block; }
+    a { color: #ffffff; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f5f5;">
+  
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f5f5;">
+    <tr>
+      <td align="center" valign="top" style="padding:20px 10px;">
+        
+        <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color:#ffffff;">
+          
+          <tr>
+            <td align="center" valign="middle" bgcolor="#1a1a2e" style="background-color:#1a1a2e;padding:20px 30px;">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="color:#ffffff;font-size:20px;font-weight:700;font-family:Arial,sans-serif;">
+                    Off Market Daily
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top:10px;">
+                    <table border="0" cellpadding="0" cellspacing="0" bgcolor="#00b894" style="background-color:#00b894;border-radius:20px;">
+                      <tr>
+                        <td style="padding:4px 12px;font-size:11px;font-weight:600;color:#ffffff;font-family:Arial,sans-serif;">Exclusive Deal</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <tr>
+            <td align="center" valign="middle" bgcolor="#16213e" style="background-color:#16213e;padding:25px 30px;">
+              <h1 style="margin:0;font-size:26px;color:#ffffff;font-family:Arial,sans-serif;">New Deal - ${data.city}, ${data.state}</h1>
+              <p style="margin:10px 0 0;font-size:16px;color:#cccccc;font-family:Arial,sans-serif;">${data.address}</p>
+            </td>
+          </tr>
+          
+          <tr>
+            <td align="center" valign="middle" bgcolor="#00b894" style="background-color:#00b894;padding:25px 20px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center" style="font-size:14px;color:#ffffff;font-family:Arial,sans-serif;">ASKING PRICE</td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-size:42px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;padding:5px 0;">$${fmtPrice(data.askingPrice)}</td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top:10px;">
+                    <table border="0" cellpadding="0" cellspacing="0" bgcolor="#008577" style="background-color:#008577;border-radius:20px;">
+                      <tr>
+                        <td style="padding:8px 20px;font-size:14px;color:#ffffff;font-family:Arial,sans-serif;">
+                          ARV: $${fmtPrice(data.arv)} | Spread: $${fmtPrice(spread)}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="padding:30px;">
+              <h2 style="margin:0 0 15px;font-size:20px;color:#1a1a2e;font-family:Arial,sans-serif;border-bottom:2px solid #00b894;padding-bottom:10px;">Property Details</h2>
+              
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #eeeeee;color:#666666;font-family:Arial,sans-serif;">Beds/Baths</td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #eeeeee;font-weight:bold;font-family:Arial,sans-serif;">${data.beds}/${data.baths}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #eeeeee;color:#666666;font-family:Arial,sans-serif;">Square Feet</td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #eeeeee;font-weight:bold;font-family:Arial,sans-serif;">${fmtPrice(data.sqft)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #eeeeee;color:#666666;font-family:Arial,sans-serif;">Year Built</td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #eeeeee;font-weight:bold;font-family:Arial,sans-serif;">${data.yearBuilt}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #eeeeee;color:#666666;font-family:Arial,sans-serif;">COE</td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #eeeeee;font-weight:bold;font-family:Arial,sans-serif;">${data.coe}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;color:#666666;font-family:Arial,sans-serif;">EMD</td>
+                  <td align="right" style="padding:12px 0;font-weight:bold;font-family:Arial,sans-serif;">$${fmtPrice(data.emd)}</td>
+                </tr>
+              </table>
+              
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:25px;">
+                <tr>
+                  <td bgcolor="#f8f9fa" style="background-color:#f8f9fa;padding:20px;">
+                    <h3 style="margin:0 0 10px;font-size:16px;color:#1a1a2e;font-family:Arial,sans-serif;">Condition Notes</h3>
+                    <p style="margin:0;color:#666666;line-height:1.6;font-family:Arial,sans-serif;">${data.conditionNotes || ''}</p>
+                  </td>
+                </tr>
+              </table>
+              
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:30px;">
+                <tr>
+                  <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td bgcolor="#00b894" style="background-color:#00b894;border-radius:30px;padding:14px 40px;" align="center">
+                          <a href="${dealLink}" style="text-decoration:none;">
+                            <span style="display:inline-block;text-decoration:none !important;">
+                              <span style="color:#ffffff;font-size:16px;font-family:Arial,sans-serif;font-weight:bold;text-decoration:none !important;">View Full Details &amp; Photos</span>
+                            </span>
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <tr>
+            <td align="center" bgcolor="#1a1a2e" style="background-color:#1a1a2e;padding:25px;">
+              <p style="margin:0 0 10px;font-size:16px;font-weight:600;color:#ffffff;font-family:Arial,sans-serif;">Interested in this deal?</p>
+              <p style="margin:0;font-size:14px;color:#cccccc;font-family:Arial,sans-serif;">Reply to this email or call/text ${data.phone || '480-266-3864'}</p>
+              <p style="margin:15px 0 0;font-size:12px;color:#888888;font-family:Arial,sans-serif;">Off Market Daily | Exclusive Investment Properties</p>
+            </td>
+          </tr>
+          
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+  
+</body>
+</html>`;
   };
 
   const formatDate = (d) => {
@@ -447,6 +604,41 @@ export default function AdminPage() {
                 />
                 <p style={{ fontSize: 11, color: '#999', marginTop: 6 }}>Photos are compressed automatically. Click Save Changes after uploading to update the deal.</p>
               </div>
+            </div>
+
+            {/* Generate Email HTML */}
+            <div style={{ marginTop: 25, borderTop: '2px solid #eee', paddingTop: 20 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 15 }}>
+                <button
+                  onClick={() => {
+                    const html = generateEmailHTML(editData, editingDeal.slug);
+                    setEmailHTML(html);
+                  }}
+                  style={{ background: '#3498db', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}
+                >
+                  Generate Email HTML
+                </button>
+                {emailHTML && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(emailHTML);
+                      alert('Email HTML copied to clipboard!');
+                    }}
+                    style={{ background: '#00b894', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}
+                  >
+                    Copy HTML for GHL
+                  </button>
+                )}
+              </div>
+              {emailHTML && (
+                <div>
+                  <div style={{ background: 'white', border: '1px solid #ddd', borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+                    <div style={{ padding: '8px 12px', background: '#f0f0f0', fontSize: 12, fontWeight: 600, color: '#666', borderBottom: '1px solid #ddd' }}>Email Preview</div>
+                    <div dangerouslySetInnerHTML={{ __html: emailHTML }} style={{ maxHeight: 400, overflowY: 'auto' }} />
+                  </div>
+                  <p style={{ fontSize: 11, color: '#999' }}>This uses the current field values above. Make your edits first, then generate.</p>
+                </div>
+              )}
             </div>
             
             <div style={{ marginTop: 25, display: 'flex', gap: 10 }}>
