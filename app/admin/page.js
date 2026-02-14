@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('deals');
   const [viewDetails, setViewDetails] = useState(null);
   const [viewDetailData, setViewDetailData] = useState([]);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   // Fetch all deals
   useEffect(() => {
@@ -105,6 +106,20 @@ export default function AdminPage() {
       setSaveMsg('❌ Error: ' + err.message);
     }
     setSaving(false);
+  };
+
+  const deleteDeal = async (id) => {
+    try {
+      const res = await supaFetch(`/rest/v1/deals?id=eq.${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDeals(prev => prev.filter(d => d.id !== id));
+        setDeleteConfirm(null);
+      } else {
+        alert('Error deleting deal');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
   };
 
   const formatDate = (d) => {
@@ -453,6 +468,12 @@ export default function AdminPage() {
                         >
                           Copy Link
                         </button>
+                        <button
+                          onClick={() => setDeleteConfirm(deal)}
+                          style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                        >
+                          ✕
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -462,6 +483,23 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '90%', boxShadow: '0 20px 25px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 12px', color: '#1a1a2e' }}>Delete Deal?</h3>
+            <p style={{ color: '#666', marginBottom: 8 }}>This will permanently delete:</p>
+            <p style={{ fontWeight: 600, color: '#1a1a2e', marginBottom: 20, padding: 12, background: '#f8f9fa', borderRadius: 6 }}>
+              {deleteConfirm.data?.address || deleteConfirm.slug}
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeleteConfirm(null)} style={{ padding: '10px 20px', background: '#f1f5f9', border: 'none', borderRadius: 8, color: '#666', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={() => deleteDeal(deleteConfirm.id)} style={{ padding: '10px 20px', background: '#dc2626', border: 'none', borderRadius: 8, color: 'white', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
