@@ -326,21 +326,128 @@ export default function AdminPage() {
               ))}
             </div>
             
-            {/* Photos section — read-only for now, shows current photos */}
-            {editData.photos && editData.photos.length > 0 && (
-              <div style={{ marginTop: 25 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 10 }}>Current Photos ({editData.photos.length})</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
+            {/* Photos section — full management */}
+            <div style={{ marginTop: 25 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 10 }}>
+                Photos ({editData.photos ? editData.photos.length : 0})
+              </label>
+              
+              {editData.photos && editData.photos.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
                   {editData.photos.map((photo, i) => (
-                    <div key={i} style={{ position: 'relative' }}>
-                      <img src={photo.url} alt={photo.label || ''} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 6 }} />
-                      <div style={{ fontSize: 10, color: '#888', textAlign: 'center', marginTop: 3 }}>{photo.label || `Photo ${i+1}`}</div>
+                    <div key={i} style={{ position: 'relative', background: '#f8f9fa', borderRadius: 8, overflow: 'hidden', border: '1px solid #eee' }}>
+                      <img src={photo.url} alt={photo.label || ''} style={{ width: '100%', height: 100, objectFit: 'cover' }} />
+                      <div style={{ padding: '6px 8px' }}>
+                        <input
+                          type="text"
+                          value={photo.label || ''}
+                          onChange={(e) => {
+                            const updated = [...editData.photos];
+                            updated[i] = { ...updated[i], label: e.target.value };
+                            updateField('photos', updated);
+                          }}
+                          placeholder="Label"
+                          style={{ width: '100%', padding: 4, border: '1px solid #ddd', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: 2, padding: '0 8px 6px' }}>
+                        {i > 0 && (
+                          <button
+                            onClick={() => {
+                              const updated = [...editData.photos];
+                              [updated[i-1], updated[i]] = [updated[i], updated[i-1]];
+                              updateField('photos', updated);
+                            }}
+                            style={{ flex: 1, padding: '4px', background: '#e8e8e8', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}
+                          >←</button>
+                        )}
+                        {i < editData.photos.length - 1 && (
+                          <button
+                            onClick={() => {
+                              const updated = [...editData.photos];
+                              [updated[i], updated[i+1]] = [updated[i+1], updated[i]];
+                              updateField('photos', updated);
+                            }}
+                            style={{ flex: 1, padding: '4px', background: '#e8e8e8', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}
+                          >→</button>
+                        )}
+                        <button
+                          onClick={() => {
+                            const updated = editData.photos.filter((_, idx) => idx !== i);
+                            updateField('photos', updated);
+                          }}
+                          style={{ flex: 1, padding: '4px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
+                        >✕</button>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: 12, color: '#999', marginTop: 8 }}>To update photos, re-publish the deal from the generator. Photo management coming soon.</p>
+              )}
+              
+              {/* Upload new photos */}
+              <div style={{ marginTop: 15 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 8 }}>Add Photos</label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files);
+                    if (!files.length) return;
+                    
+                    setSaveMsg('Uploading photos...');
+                    const slug = editingDeal.slug;
+                    const existingCount = editData.photos ? editData.photos.length : 0;
+                    const newPhotos = [...(editData.photos || [])];
+                    
+                    for (let i = 0; i < files.length; i++) {
+                      const file = files[i];
+                      setSaveMsg(`Uploading photo ${i + 1} of ${files.length}...`);
+                      
+                      // Compress image
+                      const compressed = await new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          const maxW = 1200;
+                          let w = img.width, h = img.height;
+                          if (w > maxW) { h = h * (maxW / w); w = maxW; }
+                          canvas.width = w;
+                          canvas.height = h;
+                          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                          canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                        };
+                        img.src = URL.createObjectURL(file);
+                      });
+                      
+                      const idx = existingCount + i;
+                      const fileName = `${slug}/${idx}-photo-${Date.now()}.jpg`;
+                      
+                      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/deal-photos/${fileName}`, {
+                        method: 'POST',
+                        headers: {
+                          'apikey': SUPABASE_ANON_KEY,
+                          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                          'Content-Type': 'image/jpeg'
+                        },
+                        body: compressed
+                      });
+                      
+                      if (res.ok) {
+                        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/deal-photos/${fileName}`;
+                        newPhotos.push({ url: publicUrl, label: 'Other' });
+                      }
+                    }
+                    
+                    updateField('photos', newPhotos);
+                    setSaveMsg(`✅ ${files.length} photo(s) uploaded! Click Save Changes to apply.`);
+                    e.target.value = '';
+                  }}
+                  style={{ width: '100%', padding: 12, border: '2px dashed #ddd', borderRadius: 8, cursor: 'pointer', background: '#fafafa' }}
+                />
+                <p style={{ fontSize: 11, color: '#999', marginTop: 6 }}>Photos are compressed automatically. Click Save Changes after uploading to update the deal.</p>
               </div>
-            )}
+            </div>
             
             <div style={{ marginTop: 25, display: 'flex', gap: 10 }}>
               <button 
