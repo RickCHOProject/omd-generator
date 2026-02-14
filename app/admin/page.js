@@ -30,6 +30,7 @@ export default function AdminPage() {
   const [viewDetailData, setViewDetailData] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [emailHTML, setEmailHTML] = useState('');
+  const [dealLeads, setDealLeads] = useState([]);
 
   // Fetch all deals
   useEffect(() => {
@@ -67,6 +68,14 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Error loading view details:', err);
       setViewDetailData([]);
+    }
+    // Also fetch leads
+    try {
+      const res = await supaFetch(`/rest/v1/deal_leads?deal_slug=eq.${slug}&select=*&order=created_at.desc`);
+      const data = await res.json();
+      setDealLeads(data || []);
+    } catch (err) {
+      setDealLeads([]);
     }
   };
 
@@ -338,6 +347,41 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+
+          {/* Identified Leads */}
+          {dealLeads.length > 0 && (
+            <div style={{ background: 'white', borderRadius: 12, padding: 25, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.08)', border: '2px solid #00b894' }}>
+              <h3 style={{ margin: '0 0 5px', color: '#1a1a2e' }}>🎯 Interested Leads ({dealLeads.length})</h3>
+              <p style={{ color: '#888', fontSize: 13, margin: '0 0 15px' }}>These people submitted their info from the deal page.</p>
+              {dealLeads.map((lead, i) => {
+                // Count how many views this lead's visitor_id has
+                const viewCount = lead.visitor_id ? viewDetailData.filter(v => v.visitor_id === lead.visitor_id).length : 0;
+                const isHot = viewCount >= 3;
+                return (
+                  <div key={i} style={{ 
+                    background: isHot ? '#fff8f0' : '#f8f9fa', 
+                    border: isHot ? '1px solid #ff6b6b' : '1px solid #e0e0e0',
+                    borderRadius: 10, 
+                    padding: 16, 
+                    marginBottom: 10 
+                  }}>
+                    {isHot && (
+                      <span style={{ background: '#ff6b6b', color: 'white', padding: '2px 10px', borderRadius: 10, fontSize: 11, fontWeight: 700, display: 'inline-block', marginBottom: 8 }}>
+                        🔥 HOT — {viewCount} VIEWS
+                      </span>
+                    )}
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e' }}>{lead.name || 'No name'}</div>
+                    {lead.email && <div style={{ fontSize: 13, color: '#00b894', fontWeight: 600 }}>{lead.email}</div>}
+                    {lead.phone && <div style={{ fontSize: 13, color: '#666' }}>{lead.phone}</div>}
+                    <div style={{ fontSize: 12, color: '#888', marginTop: 6 }}>
+                      Submitted: <strong>{formatDate(lead.created_at)}</strong>
+                      {viewCount > 0 && !isHot && ` · ${viewCount} views`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           
           {/* Repeat visitors */}
           {(() => {
