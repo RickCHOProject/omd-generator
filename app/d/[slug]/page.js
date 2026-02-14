@@ -93,6 +93,65 @@ export default function DealPage() {
   }, [params.slug]);
   // === END VIEW TRACKING ===
 
+  // === LEAD CAPTURE POPUP ===
+  const [showLeadPopup, setShowLeadPopup] = useState(false);
+  const [leadForm, setLeadForm] = useState({ name: '', email: '', phone: '' });
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!params.slug) return;
+    // Check if already submitted or dismissed
+    try {
+      const dismissed = localStorage.getItem('omd_lead_' + params.slug);
+      if (dismissed) return;
+    } catch (e) {}
+    // Show popup after 15 seconds
+    const timer = setTimeout(() => {
+      try {
+        const dismissed = localStorage.getItem('omd_lead_' + params.slug);
+        if (!dismissed) setShowLeadPopup(true);
+      } catch (e) {
+        setShowLeadPopup(true);
+      }
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [params.slug]);
+
+  const submitLead = async () => {
+    if (!leadForm.name && !leadForm.email) return;
+    try {
+      let visitorId = null;
+      try { visitorId = localStorage.getItem('omd_visitor_id'); } catch (e) {}
+      await fetch(`${SUPABASE_URL}/rest/v1/deal_leads`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          deal_slug: params.slug,
+          visitor_id: visitorId,
+          name: leadForm.name || null,
+          email: leadForm.email || null,
+          phone: leadForm.phone || null
+        })
+      });
+      setLeadSubmitted(true);
+      try { localStorage.setItem('omd_lead_' + params.slug, 'submitted'); } catch (e) {}
+      setTimeout(() => setShowLeadPopup(false), 2000);
+    } catch (e) {
+      setShowLeadPopup(false);
+    }
+  };
+
+  const dismissPopup = () => {
+    setShowLeadPopup(false);
+    try { localStorage.setItem('omd_lead_' + params.slug, 'dismissed'); } catch (e) {}
+  };
+  // === END LEAD CAPTURE ===
+
   // Keyboard navigation for lightbox
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -825,6 +884,79 @@ export default function DealPage() {
           </div>
         </div>
       )}
+
+      {/* === LEAD CAPTURE POPUP === */}
+      {showLeadPopup && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          top: 0,
+          background: 'rgba(0,0,0,0.4)',
+          zIndex: 9998,
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'center'
+        }} onClick={dismissPopup}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              width: '100%',
+              maxWidth: 500,
+              padding: 28,
+              borderRadius: '16px 16px 0 0',
+              boxShadow: '0 -10px 40px rgba(0,0,0,0.15)',
+              animation: 'slideUp 0.3s ease'
+            }}
+          >
+            {leadSubmitted ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e' }}>You're on the list!</div>
+                <div style={{ fontSize: 14, color: '#666', marginTop: 6 }}>We'll reach out if anything changes on this deal.</div>
+              </div>
+            ) : (
+              <>
+                <button onClick={dismissPopup} style={{ float: 'right', background: 'none', border: 'none', fontSize: 22, color: '#999', cursor: 'pointer', padding: '0 4px' }}>×</button>
+                <h3 style={{ fontSize: 19, color: '#1a1a2e', margin: '0 0 6px', fontWeight: 700 }}>Want updates on this deal?</h3>
+                <p style={{ fontSize: 13, color: '#666', margin: '0 0 18px', lineHeight: 1.5 }}>Get notified if the price drops or terms change. No spam — just this deal.</p>
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={leadForm.name}
+                  onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })}
+                  style={{ width: '100%', padding: '12px 14px', border: '2px solid #e0e0e0', borderRadius: 8, fontSize: 14, marginBottom: 10, boxSizing: 'border-box', outline: 'none' }}
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={leadForm.email}
+                  onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })}
+                  style={{ width: '100%', padding: '12px 14px', border: '2px solid #e0e0e0', borderRadius: 8, fontSize: 14, marginBottom: 10, boxSizing: 'border-box', outline: 'none' }}
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone (optional)"
+                  value={leadForm.phone}
+                  onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })}
+                  style={{ width: '100%', padding: '12px 14px', border: '2px solid #e0e0e0', borderRadius: 8, fontSize: 14, marginBottom: 14, boxSizing: 'border-box', outline: 'none' }}
+                />
+                <button 
+                  onClick={submitLead}
+                  style={{ width: '100%', background: '#00b894', color: 'white', border: 'none', padding: '14px', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}
+                >
+                  Keep Me Updated
+                </button>
+                <div onClick={dismissPopup} style={{ textAlign: 'center', fontSize: 12, color: '#999', cursor: 'pointer' }}>No thanks, just browsing</div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+      {/* === END LEAD CAPTURE POPUP === */}
     </>
   );
 }
