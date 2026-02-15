@@ -896,19 +896,19 @@ export default function DealPage() {
           background: 'rgba(0,0,0,0.4)',
           zIndex: 9998,
           display: 'flex',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           justifyContent: 'center'
         }} onClick={dismissPopup}>
           <div 
             onClick={(e) => e.stopPropagation()}
             style={{
               background: 'white',
-              width: '100%',
-              maxWidth: 500,
+              width: '90%',
+              maxWidth: 440,
               padding: 28,
-              borderRadius: '16px 16px 0 0',
-              boxShadow: '0 -10px 40px rgba(0,0,0,0.15)',
-              animation: 'slideUp 0.3s ease'
+              borderRadius: 16,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              animation: 'popIn 0.3s ease'
             }}
           >
             {leadSubmitted ? (
@@ -955,7 +955,7 @@ export default function DealPage() {
           </div>
         </div>
       )}
-      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+      <style>{`@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
       {/* === END LEAD CAPTURE POPUP === */}
     </>
   );
