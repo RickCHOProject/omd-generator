@@ -31,6 +31,8 @@ export default function AdminPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [emailHTML, setEmailHTML] = useState('');
   const [dealLeads, setDealLeads] = useState([]);
+  const [buyerSignups, setBuyerSignups] = useState([]);
+  const [loadingSignups, setLoadingSignups] = useState(false);
 
   // Fetch all deals
   useEffect(() => {
@@ -77,6 +79,42 @@ export default function AdminPage() {
     } catch (err) {
       setDealLeads([]);
     }
+  };
+
+  // Load buyer signups
+  const loadSignups = async () => {
+    setLoadingSignups(true);
+    try {
+      const res = await supaFetch('/rest/v1/buyer_signups?select=*&order=created_at.desc');
+      const data = await res.json();
+      setBuyerSignups(data || []);
+    } catch (err) {
+      console.error('Error loading signups:', err);
+      setBuyerSignups([]);
+    }
+    setLoadingSignups(false);
+  };
+
+  // Export signups to CSV
+  const exportCSV = () => {
+    if (!buyerSignups.length) return;
+    const headers = ['Date', 'Name', 'Email', 'Phone', 'Markets', 'Source'];
+    const rows = buyerSignups.map(s => [
+      new Date(s.created_at).toLocaleDateString() + ' ' + new Date(s.created_at).toLocaleTimeString(),
+      s.name || '',
+      s.email || '',
+      s.phone || '',
+      s.markets || '',
+      s.source || ''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `OMD-Buyer-Signups-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const startEditing = (deal) => {
@@ -740,6 +778,25 @@ export default function AdminPage() {
           </div>
         </div>
         
+        {/* Tab Bar */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: 20, background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+          <button 
+            onClick={() => setActiveTab('deals')} 
+            style={{ flex: 1, padding: '14px 20px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14, background: activeTab === 'deals' ? '#1a1a2e' : 'white', color: activeTab === 'deals' ? 'white' : '#666' }}
+          >
+            Deals ({deals.length})
+          </button>
+          <button 
+            onClick={() => { setActiveTab('signups'); loadSignups(); }} 
+            style={{ flex: 1, padding: '14px 20px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14, background: activeTab === 'signups' ? '#1a1a2e' : 'white', color: activeTab === 'signups' ? 'white' : '#666' }}
+          >
+            Buyer Signups
+          </button>
+        </div>
+
+        {/* Deals Tab */}
+        {activeTab === 'deals' && (
+        <>
         {/* Deals Table */}
         <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
           <div style={{ overflowX: 'auto' }}>
@@ -826,6 +883,70 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+
+      {/* Buyer Signups Tab */}
+      {activeTab === 'signups' && (
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px 20px' }}>
+          <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '2px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: 16, color: '#1a1a2e' }}>Buyer Signups</span>
+                <span style={{ color: '#888', fontSize: 13, marginLeft: 10 }}>({buyerSignups.length} total)</span>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={loadSignups} style={{ padding: '8px 16px', background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#666' }}>
+                  Refresh
+                </button>
+                <button onClick={exportCSV} disabled={!buyerSignups.length} style={{ padding: '8px 16px', background: '#00b894', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'white', opacity: buyerSignups.length ? 1 : 0.5 }}>
+                  Download CSV
+                </button>
+              </div>
+            </div>
+            {loadingSignups ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading signups...</div>
+            ) : buyerSignups.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>No signups yet</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #eee' }}>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>DATE</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>NAME</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>EMAIL</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>PHONE</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>MARKETS</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>SOURCE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {buyerSignups.map((signup) => (
+                      <tr key={signup.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                        <td style={{ padding: '14px 16px', color: '#666', fontSize: 13, whiteSpace: 'nowrap' }}>
+                          {new Date(signup.created_at).toLocaleDateString()} {new Date(signup.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>{signup.name || '—'}</td>
+                        <td style={{ padding: '14px 16px', color: '#666', fontSize: 14 }}>{signup.email || '—'}</td>
+                        <td style={{ padding: '14px 16px', color: '#666', fontSize: 14 }}>{signup.phone || '—'}</td>
+                        <td style={{ padding: '14px 16px', fontSize: 13 }}>
+                          {signup.markets ? signup.markets.split(', ').map((m, i) => (
+                            <span key={i} style={{ display: 'inline-block', background: '#e8f5e9', color: '#2e7d32', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, marginRight: 4, marginBottom: 2 }}>{m}</span>
+                          )) : '—'}
+                        </td>
+                        <td style={{ padding: '14px 16px', color: '#888', fontSize: 12 }}>{signup.source || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
