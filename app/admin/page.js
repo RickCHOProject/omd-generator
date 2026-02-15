@@ -882,15 +882,11 @@ export default function AdminPage() {
             </table>
           </div>
         </div>
-      </div>
-      </>
-      )}
+        </>
+        )}
 
-      {/* Delete Confirmation Modal */}
-
-      {/* Buyer Signups Tab */}
-      {activeTab === 'signups' && (
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px 20px' }}>
+        {/* Buyer Signups Tab */}
+        {activeTab === 'signups' && (
           <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
             <div style={{ padding: '16px 20px', borderBottom: '2px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -945,8 +941,8 @@ export default function AdminPage() {
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
