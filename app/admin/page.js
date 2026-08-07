@@ -176,7 +176,7 @@ export default function AdminPage() {
     return Number(num).toLocaleString();
   };
 
-  const generateEmailHTML = (data, slug) => {
+  const generateEmailHTML = (data, slug, dealNumber) => {
     const spread = (Number(data.arv) || 0) - (Number(data.askingPrice) || 0);
     const dealLink = `https://deals.offmarketdaily.com/d/${slug}`;
     return `<!DOCTYPE html>
@@ -224,6 +224,7 @@ export default function AdminPage() {
           <tr>
             <td align="center" valign="middle" bgcolor="#16213e" style="background-color:#16213e;padding:25px 30px;">
               <h1 style="margin:0;font-size:26px;color:#ffffff;font-family:Arial,sans-serif;">New Deal - ${data.city}, ${data.state}</h1>
+              <p style="margin:8px 0 0;font-size:13px;color:#00b894;font-family:Arial,sans-serif;font-weight:bold;">Deal #${dealNumber}</p>
               <p style="margin:10px 0 0;font-size:16px;color:#cccccc;font-family:Arial,sans-serif;">${data.address}</p>
             </td>
           </tr>
@@ -521,6 +522,7 @@ export default function AdminPage() {
         <div style={{ maxWidth: 800, margin: '0 auto', padding: 20 }}>
           <div style={{ background: 'white', borderRadius: 12, padding: 25, boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
             <div style={{ marginBottom: 15, padding: 12, background: '#f0faf7', borderRadius: 8, fontSize: 13, color: '#666' }}>
+              <strong>Deal #:</strong> {editingDeal.id}<br />
               <strong>URL:</strong> deals.offmarketdaily.com/d/{editingDeal.slug} — <em>Editing will NOT change this link</em>
             </div>
             
@@ -693,7 +695,7 @@ export default function AdminPage() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 15 }}>
                 <button
                   onClick={() => {
-                    const html = generateEmailHTML(editData, editingDeal.slug);
+                    const html = generateEmailHTML(editData, editingDeal.slug, editingDeal.id);
                     setEmailHTML(html);
                   }}
                   style={{ background: '#3498db', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}
@@ -803,6 +805,7 @@ export default function AdminPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee' }}>
+                  <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>DEAL #</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>ADDRESS</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>PRICE</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>MARKET</th>
@@ -814,6 +817,9 @@ export default function AdminPage() {
               <tbody>
                 {deals.map((deal) => (
                   <tr key={deal.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 700, color: '#00b894', whiteSpace: 'nowrap' }}>
+                      #{deal.id}
+                    </td>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>{deal.data?.address || 'No address'}</div>
                       <div style={{ color: '#aaa', fontSize: 12 }}>{deal.slug}</div>

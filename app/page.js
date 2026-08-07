@@ -58,6 +58,7 @@ export default function OMDGenerator() {
   const [photos, setPhotos] = useState([]);
   const [previewMode, setPreviewMode] = useState(null);
   const [dealUrl, setDealUrl] = useState('');
+  const [dealNumber, setDealNumber] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [buyerTeaser, setBuyerTeaser] = useState('');
@@ -313,6 +314,7 @@ export default function OMDGenerator() {
 
   const publishDeal = async () => {
     setPublishing(true);
+    setDealNumber('');
     try {
       const slug = formData.address
         .toLowerCase()
@@ -343,7 +345,10 @@ export default function OMDGenerator() {
       });
       
       if (response.ok) {
+        const savedDeals = await response.json();
+        const savedDeal = savedDeals?.[0];
         const url = `https://deals.offmarketdaily.com/d/${slug}`;
+        setDealNumber(savedDeal?.id ? String(savedDeal.id) : '');
         setDealUrl(url);
       } else {
         const err = await response.text();
@@ -376,7 +381,7 @@ export default function OMDGenerator() {
   const generateTextBlast = () => {
     return `New Deal - ${formData.city}, ${formData.state}
 
-Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}
+${dealNumber ? `Deal #: ${dealNumber}\n` : ''}Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}
 Asking Price: $${formatPrice(formData.askingPrice)}
 Estimated ARV: $${formatPrice(formData.arv)}
 Beds/Baths: ${formData.beds}/${formData.baths}
@@ -442,6 +447,7 @@ Reply if interested`;
           <tr>
             <td align="center" valign="middle" bgcolor="#16213e" style="background-color:#16213e;padding:25px 30px;">
               <h1 style="margin:0;font-size:26px;color:#ffffff;font-family:Arial,sans-serif;">New Deal - ${formData.city}, ${formData.state}</h1>
+              ${dealNumber ? `<p style="margin:8px 0 0;font-size:13px;color:#00b894;font-family:Arial,sans-serif;font-weight:bold;">Deal #${dealNumber}</p>` : ''}
               <p style="margin:10px 0 0;font-size:16px;color:#cccccc;font-family:Arial,sans-serif;">${formData.address}</p>
             </td>
           </tr>
@@ -1082,7 +1088,7 @@ Reply if interested`;
 
           {dealUrl && (
             <div style={{ padding: 20, background: '#e8f5e9', margin: 20, borderRadius: 8 }}>
-              <strong>Deal Published!</strong>
+              <strong>Deal Published{dealNumber ? ` — Deal #${dealNumber}` : ''}!</strong>
               <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
                 <input type="text" value={dealUrl} readOnly style={{ flex: 1, padding: 10, borderRadius: 6, border: '1px solid #ddd' }} />
                 <button onClick={() => copyToClipboard(dealUrl)} style={{ padding: '10px 20px', background: '#00b894', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Copy</button>
