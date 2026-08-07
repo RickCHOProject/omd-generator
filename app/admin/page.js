@@ -176,7 +176,7 @@ export default function AdminPage() {
     return Number(num).toLocaleString();
   };
 
-  const generateEmailHTML = (data, slug, dealNumber) => {
+  const generateEmailHTML = (data, slug) => {
     const spread = (Number(data.arv) || 0) - (Number(data.askingPrice) || 0);
     const dealLink = `https://deals.offmarketdaily.com/d/${slug}`;
     return `<!DOCTYPE html>
@@ -224,7 +224,6 @@ export default function AdminPage() {
           <tr>
             <td align="center" valign="middle" bgcolor="#16213e" style="background-color:#16213e;padding:25px 30px;">
               <h1 style="margin:0;font-size:26px;color:#ffffff;font-family:Arial,sans-serif;">New Deal - ${data.city}, ${data.state}</h1>
-              <p style="margin:8px 0 0;font-size:13px;color:#00b894;font-family:Arial,sans-serif;font-weight:bold;">Deal #${dealNumber}</p>
               <p style="margin:10px 0 0;font-size:16px;color:#cccccc;font-family:Arial,sans-serif;">${data.address}</p>
             </td>
           </tr>
@@ -695,7 +694,7 @@ export default function AdminPage() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 15 }}>
                 <button
                   onClick={() => {
-                    const html = generateEmailHTML(editData, editingDeal.slug, editingDeal.id);
+                    const html = generateEmailHTML(editData, editingDeal.slug);
                     setEmailHTML(html);
                   }}
                   style={{ background: '#3498db', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}

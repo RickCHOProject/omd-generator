@@ -48,7 +48,7 @@ export default function DealPage() {
           { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }}
         );
         const data = await response.json();
-        if (data?.[0]) setDeal({ ...data[0].data, dealNumber: data[0].id });
+        if (data?.[0]) setDeal(data[0].data);
       } catch (err) {
         console.error('Error fetching deal:', err);
       }
@@ -287,20 +287,13 @@ export default function DealPage() {
               <HouseIcon />
               <span style={{ fontWeight: 700, fontSize: 18 }}>Off Market Daily</span>
             </a>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {deal.dealNumber && (
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#00b894' }}>
-                  Deal #{deal.dealNumber}
-                </span>
-              )}
-              <span style={{
-                background: '#00b894',
-                padding: '6px 14px',
-                borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 600
-              }}>Exclusive Deal</span>
-            </div>
+            <span style={{
+              background: '#00b894',
+              padding: '6px 14px',
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 600
+            }}>Exclusive Deal</span>
           </div>
           {/* Hero Image Section */}
           {heroPhoto && (
