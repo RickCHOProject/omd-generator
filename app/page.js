@@ -381,7 +381,7 @@ export default function OMDGenerator() {
   const generateTextBlast = () => {
     return `New Deal - ${formData.city}, ${formData.state}
 
-${dealNumber ? `Deal #: ${dealNumber}\n` : ''}Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}
+Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}
 Asking Price: $${formatPrice(formData.askingPrice)}
 Estimated ARV: $${formatPrice(formData.arv)}
 Beds/Baths: ${formData.beds}/${formData.baths}
@@ -447,7 +447,6 @@ Reply if interested`;
           <tr>
             <td align="center" valign="middle" bgcolor="#16213e" style="background-color:#16213e;padding:25px 30px;">
               <h1 style="margin:0;font-size:26px;color:#ffffff;font-family:Arial,sans-serif;">New Deal - ${formData.city}, ${formData.state}</h1>
-              ${dealNumber ? `<p style="margin:8px 0 0;font-size:13px;color:#00b894;font-family:Arial,sans-serif;font-weight:bold;">Deal #${dealNumber}</p>` : ''}
               <p style="margin:10px 0 0;font-size:16px;color:#cccccc;font-family:Arial,sans-serif;">${formData.address}</p>
             </td>
           </tr>
