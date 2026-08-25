@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
+import { EMPTY_DEAL, extractTextBlastPhotoLink, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
+import { buildTextBlast } from '../lib/textBlast.mjs';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
@@ -50,12 +52,7 @@ const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
 
 export default function OMDGenerator() {
   const [rawInput, setRawInput] = useState('');
-  const [formData, setFormData] = useState({
-    address: '', city: '', state: '', zip: '',
-    askingPrice: '', arv: '', beds: '', baths: '',
-    sqft: '', yearBuilt: '', occupancy: '', access: '',
-    coe: '', emd: '', hoa: '', conditionNotes: '', phone: '480-266-3864'
-  });
+  const [formData, setFormData] = useState({ ...EMPTY_DEAL });
   const [photos, setPhotos] = useState([]);
   const [previewMode, setPreviewMode] = useState(null);
   const [dealUrl, setDealUrl] = useState('');
@@ -63,59 +60,24 @@ export default function OMDGenerator() {
   const [publishing, setPublishing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [buyerTeaser, setBuyerTeaser] = useState('');
+  const [textBlastPhotoLink, setTextBlastPhotoLink] = useState('');
   const [facebookVariantOffset, setFacebookVariantOffset] = useState(0);
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [parseNotice, setParseNotice] = useState(null);
   const [activeImg, setActiveImg] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [polishingNotes, setPolishingNotes] = useState(false);
+  const [polishNotice, setPolishNotice] = useState('');
 
   // Polish raw notes into professional marketing copy - CLIENT SIDE ONLY
   const polishNotes = () => {
     if (!formData.conditionNotes.trim()) return;
     setPolishingNotes(true);
-    
-    let text = formData.conditionNotes;
-    
-    // Clean up common phrases
-    text = text
-      .replace(/hvac/gi, 'HVAC')
-      .replace(/(\d+)\s*yrs?\b/gi, '$1 years')
-      .replace(/is old like (\d+)/gi, 'is $1')
-      .replace(/but runs/gi, '- operational.')
-      .replace(/roof done (\d{4})/gi, 'Roof replaced $1.')
-      .replace(/seller says\.?\s*/gi, '')
-      .replace(/seller said\.?\s*/gi, '')
-      .replace(/is rough/gi, 'needs work -')
-      .replace(/cabinets falling off/gi, 'cabinets need replacement,')
-      .replace(/no dishwasher/gi, 'no dishwasher.')
-      .replace(/that old pink tile/gi, 'dated tile,')
-      .replace(/needs updating/gi, 'needs updating.')
-      .replace(/didnt see cracks/gi, 'no visible cracks.')
-      .replace(/didn't see cracks/gi, 'no visible cracks.')
-      .replace(/looks ok/gi, 'appears solid,')
-      .replace(/was converted/gi, 'converted,')
-      .replace(/not sure if permitted/gi, 'permit status unknown.')
-      .replace(/is gross/gi, 'needs attention -')
-      .replace(/green water/gi, 'needs draining,')
-      .replace(/pump might be shot/gi, 'pump may need replacement,')
-      .replace(/hasnt been touched in forever/gi, 'not recently maintained.')
-      .replace(/hasn't been touched in forever/gi, 'not recently maintained.')
-      .replace(/\.\./g, '.')
-      .replace(/,\./g, '.')
-      .replace(/\s+/g, ' ');
-    
-    // Capitalize first letter of each sentence
-    let sentences = text.split(/\.\s*/).filter(s => s.trim());
-    sentences = sentences.map(s => {
-      s = s.trim();
-      return s.charAt(0).toUpperCase() + s.slice(1);
-    });
-    
-    text = sentences.join('. ');
-    if (text && !text.endsWith('.')) text += '.';
-    
-    setFormData({ ...formData, conditionNotes: text });
+    const polished = polishConditionNotes(formData.conditionNotes);
+    const changed = polished !== formData.conditionNotes.trim();
+    setFormData({ ...formData, conditionNotes: polished });
+    setPolishNotice(changed ? 'Condition notes polished.' : 'Notes already look polished.');
     setPolishingNotes(false);
   };
 
@@ -123,108 +85,17 @@ export default function OMDGenerator() {
   const parseInput = () => {
     if (!rawInput.trim()) return;
     setParsing(true);
-    
-    const t = rawInput;
-    const tLower = rawInput.toLowerCase();
-    const data = { ...formData };
-    
-    // Convert "5k" to "5000", "410k" to "410000"
-    const toNumber = (str) => {
-      if (!str) return '';
-      let s = str.replace(/[$,]/g, '').trim();
-      if (s.toLowerCase().endsWith('k')) {
-        return String(Math.round(parseFloat(s.slice(0, -1)) * 1000));
-      }
-      const m = s.match(/[\d.]+/);
-      return m ? m[0] : '';
-    };
-
-    let m;
-
-    // ADDRESS
-    m = t.match(/address[:\s]+([^,\n]+)/i);
-    if (m) data.address = m[1].trim();
-
-    // CITY
-    m = t.match(/,\s*([A-Za-z\s]+),\s*[A-Z]{2}\s*\d{5}/);
-    if (m) data.city = m[1].trim();
-
-    // STATE
-    m = t.match(/,\s*([A-Z]{2})\s*\d{5}/);
-    if (m) data.state = m[1];
-
-    // ZIP
-    m = t.match(/[A-Z]{2}\s*(\d{5})/);
-    if (m) data.zip = m[1];
-
-    // ASKING PRICE
-    m = t.match(/asking(?:\s+price)?[^0-9]*([\d,]+k?)/i);
-    if (m) data.askingPrice = toNumber(m[1]);
-
-    // ARV
-    m = t.match(/arv[^0-9]*([\d,]+k?)/i);
-    if (m) data.arv = toNumber(m[1]);
-
-    // BEDS
-    m = t.match(/(\d+)\s*bed/i);
-    if (m) data.beds = m[1];
-
-    // BATHS
-    m = t.match(/(\d+(?:\.\d+)?)\s*bath/i);
-    if (m) data.baths = m[1];
-
-    // SQFT
-    m = t.match(/sqft\s*([\d,]+)/i) || t.match(/([\d,]+)\s*(?:sqft|sq\.?\s*ft)/i);
-    if (m) data.sqft = toNumber(m[1]);
-
-    // YEAR BUILT
-    m = t.match(/built\s*(19\d{2}|20\d{2})/i);
-    if (m) data.yearBuilt = m[1];
-
-    // OCCUPANCY
-    m = t.match(/(tenant occupied|owner occupied|vacant|occupied|tenant)/i);
-    if (m) data.occupancy = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
-
-    // ACCESS / LOCKBOX
-    m = t.match(/lockbox\s*(?:code)?\s*(\d+)/i);
-    if (m) {
-      data.access = 'Lockbox ' + m[1];
-    } else {
-      m = t.match(/access\s*:?\s*([^\n]+)/i);
-      if (m) data.access = m[1].trim();
-    }
-
-    // COE
-    m = t.match(/(?:coe|close\s+by|close(?:\s+of\s+escrow)?)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
-    if (m) data.coe = m[1];
-
-    // EMD
-    m = t.match(/emd[^0-9]*([\d,]+k?)/i);
-    if (m) data.emd = toNumber(m[1]);
-
-    // HOA
-    m = t.match(/hoa\s+\$?(\d+(?:\/mo)?)/i);
-    if (m) data.hoa = m[1];
-
-    // PHONE
-    m = t.match(/(?:phone|call|text)\s*:?\s*(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i);
-    if (m) {
-      const phoneDigits = m[1].replace(/\D/g, '');
-      data.phone = phoneDigits.length === 10
-        ? `${phoneDigits.slice(0, 3)}-${phoneDigits.slice(3, 6)}-${phoneDigits.slice(6)}`
-        : m[1].trim();
-    }
-
-    // CONDITION NOTES
-    const noteStart = tLower.search(/hvac|roof|kitchen/);
-    if (noteStart !== -1) {
-      let content = t.substring(noteStart);
-      const stopIdx = content.toLowerCase().search(/lockbox|seller wants|\nphone\s*:|\ncall\s*:|\ntext\s*:/);
-      if (stopIdx > 0) content = content.substring(0, stopIdx);
-      data.conditionNotes = content.trim();
-    }
-
+    const data = parseDealInput(rawInput);
+    const missingFields = getMissingDealFields(data);
     setFormData(data);
+    setDealUrl('');
+    setDealNumber('');
+    setFacebookVariantOffset(0);
+    setTextBlastPhotoLink(extractTextBlastPhotoLink(rawInput));
+    setPolishNotice('');
+    setParseNotice(missingFields.length
+      ? { type: 'warning', text: `Parsed the buyer-facing details found. Still needed: ${missingFields.join(', ')}.` }
+      : { type: 'success', text: 'All buyer-facing deal fields were found.' });
     setParsing(false);
   };
 
@@ -394,28 +265,10 @@ export default function OMDGenerator() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  const generateTextBlast = () => {
-    return `New Deal - ${formData.city}, ${formData.state}
-
-Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}
-Asking Price: $${formatPrice(formData.askingPrice)}
-Estimated ARV: $${formatPrice(formData.arv)}
-Beds/Baths: ${formData.beds}/${formData.baths}
-Living Area Size: ${formatPrice(formData.sqft)} (Sq. Ft)
-Year Built: ${formData.yearBuilt}
-Occupancy Status at Closing: ${formData.occupancy || 'TBD'}
-Access: ${formData.access || 'Easy Access'}
-COE: ${formData.coe}
-EMD: $${formatPrice(formData.emd)}
-${dealUrl ? `Link: ${dealUrl}` : ''}
-
-${spread > 80000 ? `Over $${formatPrice(spread)} spread potential here.` : `$${formatPrice(spread)} spread on this one.`}
-
-Notes:
-${formData.conditionNotes}
-
-Reply if interested`;
-  };
+  const generateTextBlast = () => buildTextBlast(formData, {
+    dealUrl,
+    photoLink: textBlastPhotoLink
+  });
 
   const generateFacebookPost = () => buildFacebookPost(formData, {
     variantIndex: getFacebookVariantIndex(formData) + facebookVariantOffset,
@@ -604,6 +457,19 @@ Reply if interested`;
             >
               {parsing ? 'Parsing...' : 'Parse Deal Info'}
             </button>
+            {parseNotice && (
+              <div style={{
+                marginTop: 12,
+                padding: '12px 14px',
+                borderRadius: 8,
+                background: parseNotice.type === 'success' ? '#e8f7f2' : '#fff6df',
+                color: parseNotice.type === 'success' ? '#116149' : '#795500',
+                fontSize: 13,
+                lineHeight: 1.5
+              }}>
+                {parseNotice.text}
+              </div>
+            )}
 
             <div style={{ marginTop: 30 }}>
               <h3>Deal Details</h3>
@@ -626,7 +492,10 @@ Reply if interested`;
                 <label style={{ display: 'block', marginBottom: 5, fontWeight: 500, color: '#666' }}>Condition Notes</label>
                 <textarea
                   value={formData.conditionNotes}
-                  onChange={(e) => setFormData({ ...formData, conditionNotes: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, conditionNotes: e.target.value });
+                    setPolishNotice('');
+                  }}
                   style={{ width: '100%', height: 80, padding: 10, border: '1px solid #ddd', borderRadius: 6 }}
                 />
                 <button 
@@ -646,7 +515,9 @@ Reply if interested`;
                 >
                   {polishingNotes ? 'Polishing...' : '✨ Polish Notes for Buyers'}
                 </button>
-                <span style={{ marginLeft: 10, fontSize: 12, color: '#888' }}>Rewrites raw notes into professional marketing copy</span>
+                <span style={{ marginLeft: 10, fontSize: 12, color: polishNotice ? '#116149' : '#888' }}>
+                  {polishNotice || 'Rewrites raw notes into professional marketing copy'}
+                </span>
               </div>
             </div>
 
@@ -1130,10 +1001,7 @@ Reply if interested`;
     return (
       <div style={{ minHeight: '100vh', background: '#eef1f6', padding: 20 }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #d7dbe2', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
-              ← Edit deal
-            </button>
+          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ color: '#5f6673', fontSize: 13 }}>The property image is selected separately from Drive when posting.</span>
           </div>
 
@@ -1169,6 +1037,12 @@ Reply if interested`;
               </button>
             </div>
           </section>
+
+          <div style={{ marginTop: 20 }}>
+            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #d7dbe2', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
+              ← Edit
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1200,12 +1074,6 @@ Reply if interested`;
     return (
       <div style={{ minHeight: '100vh', background: '#f8f9fa', padding: 20 }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
-          <div style={{ marginBottom: 20 }}>
-            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
-              ← Edit
-            </button>
-          </div>
-
           <div style={{ background: 'white', padding: 20, borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Buyer Teaser (Initial Text - No Link)</h3>
             <div style={{ background: '#f8f9fa', padding: 15, borderRadius: 8, fontFamily: 'monospace', fontSize: 14, marginBottom: 15 }}>
@@ -1229,11 +1097,30 @@ Reply if interested`;
 
           <div style={{ background: 'white', padding: 20, borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Full Text Blast (For Dispo Partners)</h3>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, color: '#555', fontSize: 13 }}>
+              Google Drive Photo Link
+            </label>
+            <input
+              type="url"
+              value={textBlastPhotoLink}
+              onChange={(e) => setTextBlastPhotoLink(e.target.value)}
+              placeholder="Paste the Google Drive photo link here"
+              style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 8, marginBottom: 15, fontSize: 14 }}
+            />
+            <div style={{ margin: '-7px 0 15px', color: '#888', fontSize: 12 }}>
+              This link is used only in the Text Blast.
+            </div>
             <pre style={{ background: '#f8f9fa', padding: 20, borderRadius: 8, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
               {generateTextBlast()}
             </pre>
             <button onClick={() => copyToClipboard(generateTextBlast())} style={{ marginTop: 15, width: '100%', background: '#00b894', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
               Copy Text Blast
+            </button>
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
+              ← Edit
             </button>
           </div>
         </div>
