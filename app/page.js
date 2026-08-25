@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
+import { EMPTY_DEAL, getMissingDealFields, parseDealInput } from '../lib/dealParser.mjs';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
@@ -50,12 +51,7 @@ const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
 
 export default function OMDGenerator() {
   const [rawInput, setRawInput] = useState('');
-  const [formData, setFormData] = useState({
-    address: '', city: '', state: '', zip: '',
-    askingPrice: '', arv: '', beds: '', baths: '',
-    sqft: '', yearBuilt: '', occupancy: '', access: '',
-    coe: '', emd: '', hoa: '', conditionNotes: '', phone: '480-266-3864'
-  });
+  const [formData, setFormData] = useState({ ...EMPTY_DEAL });
   const [photos, setPhotos] = useState([]);
   const [previewMode, setPreviewMode] = useState(null);
   const [dealUrl, setDealUrl] = useState('');
@@ -66,6 +62,7 @@ export default function OMDGenerator() {
   const [facebookVariantOffset, setFacebookVariantOffset] = useState(0);
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [parseNotice, setParseNotice] = useState(null);
   const [activeImg, setActiveImg] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [polishingNotes, setPolishingNotes] = useState(false);
@@ -123,108 +120,15 @@ export default function OMDGenerator() {
   const parseInput = () => {
     if (!rawInput.trim()) return;
     setParsing(true);
-    
-    const t = rawInput;
-    const tLower = rawInput.toLowerCase();
-    const data = { ...formData };
-    
-    // Convert "5k" to "5000", "410k" to "410000"
-    const toNumber = (str) => {
-      if (!str) return '';
-      let s = str.replace(/[$,]/g, '').trim();
-      if (s.toLowerCase().endsWith('k')) {
-        return String(Math.round(parseFloat(s.slice(0, -1)) * 1000));
-      }
-      const m = s.match(/[\d.]+/);
-      return m ? m[0] : '';
-    };
-
-    let m;
-
-    // ADDRESS
-    m = t.match(/address[:\s]+([^,\n]+)/i);
-    if (m) data.address = m[1].trim();
-
-    // CITY
-    m = t.match(/,\s*([A-Za-z\s]+),\s*[A-Z]{2}\s*\d{5}/);
-    if (m) data.city = m[1].trim();
-
-    // STATE
-    m = t.match(/,\s*([A-Z]{2})\s*\d{5}/);
-    if (m) data.state = m[1];
-
-    // ZIP
-    m = t.match(/[A-Z]{2}\s*(\d{5})/);
-    if (m) data.zip = m[1];
-
-    // ASKING PRICE
-    m = t.match(/asking(?:\s+price)?[^0-9]*([\d,]+k?)/i);
-    if (m) data.askingPrice = toNumber(m[1]);
-
-    // ARV
-    m = t.match(/arv[^0-9]*([\d,]+k?)/i);
-    if (m) data.arv = toNumber(m[1]);
-
-    // BEDS
-    m = t.match(/(\d+)\s*bed/i);
-    if (m) data.beds = m[1];
-
-    // BATHS
-    m = t.match(/(\d+(?:\.\d+)?)\s*bath/i);
-    if (m) data.baths = m[1];
-
-    // SQFT
-    m = t.match(/sqft\s*([\d,]+)/i) || t.match(/([\d,]+)\s*(?:sqft|sq\.?\s*ft)/i);
-    if (m) data.sqft = toNumber(m[1]);
-
-    // YEAR BUILT
-    m = t.match(/built\s*(19\d{2}|20\d{2})/i);
-    if (m) data.yearBuilt = m[1];
-
-    // OCCUPANCY
-    m = t.match(/(tenant occupied|owner occupied|vacant|occupied|tenant)/i);
-    if (m) data.occupancy = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
-
-    // ACCESS / LOCKBOX
-    m = t.match(/lockbox\s*(?:code)?\s*(\d+)/i);
-    if (m) {
-      data.access = 'Lockbox ' + m[1];
-    } else {
-      m = t.match(/access\s*:?\s*([^\n]+)/i);
-      if (m) data.access = m[1].trim();
-    }
-
-    // COE
-    m = t.match(/(?:coe|close\s+by|close(?:\s+of\s+escrow)?)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
-    if (m) data.coe = m[1];
-
-    // EMD
-    m = t.match(/emd[^0-9]*([\d,]+k?)/i);
-    if (m) data.emd = toNumber(m[1]);
-
-    // HOA
-    m = t.match(/hoa\s+\$?(\d+(?:\/mo)?)/i);
-    if (m) data.hoa = m[1];
-
-    // PHONE
-    m = t.match(/(?:phone|call|text)\s*:?\s*(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i);
-    if (m) {
-      const phoneDigits = m[1].replace(/\D/g, '');
-      data.phone = phoneDigits.length === 10
-        ? `${phoneDigits.slice(0, 3)}-${phoneDigits.slice(3, 6)}-${phoneDigits.slice(6)}`
-        : m[1].trim();
-    }
-
-    // CONDITION NOTES
-    const noteStart = tLower.search(/hvac|roof|kitchen/);
-    if (noteStart !== -1) {
-      let content = t.substring(noteStart);
-      const stopIdx = content.toLowerCase().search(/lockbox|seller wants|\nphone\s*:|\ncall\s*:|\ntext\s*:/);
-      if (stopIdx > 0) content = content.substring(0, stopIdx);
-      data.conditionNotes = content.trim();
-    }
-
+    const data = parseDealInput(rawInput);
+    const missingFields = getMissingDealFields(data);
     setFormData(data);
+    setDealUrl('');
+    setDealNumber('');
+    setFacebookVariantOffset(0);
+    setParseNotice(missingFields.length
+      ? { type: 'warning', text: `Parsed the buyer-facing details found. Still needed: ${missingFields.join(', ')}.` }
+      : { type: 'success', text: 'All buyer-facing deal fields were found.' });
     setParsing(false);
   };
 
@@ -604,6 +508,19 @@ Reply if interested`;
             >
               {parsing ? 'Parsing...' : 'Parse Deal Info'}
             </button>
+            {parseNotice && (
+              <div style={{
+                marginTop: 12,
+                padding: '12px 14px',
+                borderRadius: 8,
+                background: parseNotice.type === 'success' ? '#e8f7f2' : '#fff6df',
+                color: parseNotice.type === 'success' ? '#116149' : '#795500',
+                fontSize: 13,
+                lineHeight: 1.5
+              }}>
+                {parseNotice.text}
+              </div>
+            )}
 
             <div style={{ marginTop: 30 }}>
               <h3>Deal Details</h3>
