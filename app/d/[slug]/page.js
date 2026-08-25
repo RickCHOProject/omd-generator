@@ -105,16 +105,42 @@ export default function DealPage() {
       const dismissed = localStorage.getItem('omd_lead_' + params.slug);
       if (dismissed) return;
     } catch (e) {}
-    // Show popup after 15 seconds
-    const timer = setTimeout(() => {
+    // Wait until the buyer has spent time with the deal and scrolled into the page.
+    // This keeps cold-outreach visitors from seeing a form before the deal itself.
+    let timerElapsed = false;
+    let buyerEngaged = false;
+    let popupShown = false;
+    const maybeShowPopup = () => {
+      if (!timerElapsed || !buyerEngaged || popupShown) return;
       try {
         const dismissed = localStorage.getItem('omd_lead_' + params.slug);
-        if (!dismissed) setShowLeadPopup(true);
+        if (!dismissed) {
+          popupShown = true;
+          setShowLeadPopup(true);
+        }
       } catch (e) {
+        popupShown = true;
         setShowLeadPopup(true);
       }
-    }, 15000);
-    return () => clearTimeout(timer);
+    };
+    const handleScroll = () => {
+      const availableScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollProgress = availableScroll > 0 ? window.scrollY / availableScroll : 0;
+      if (scrollProgress >= 0.35) {
+        buyerEngaged = true;
+        maybeShowPopup();
+      }
+    };
+    const timer = setTimeout(() => {
+      timerElapsed = true;
+      maybeShowPopup();
+    }, 45000);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, [params.slug]);
 
   const submitLead = async () => {
@@ -267,11 +293,14 @@ export default function DealPage() {
         background: '#f8f9fa',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
-        {/* Full Width Container */}
+        {/* Centered listing container */}
         <div style={{ 
           width: '100%',
+          maxWidth: 1200,
+          margin: '0 auto',
           background: 'white',
-          minHeight: '100vh'
+          minHeight: '100vh',
+          boxShadow: '0 0 40px rgba(26,26,46,0.08)'
         }}>
           
           {/* Header */}
@@ -305,7 +334,7 @@ export default function DealPage() {
                 style={{
                   position: 'relative',
                   width: '100%',
-                  paddingTop: '56.25%',
+                  height: 'clamp(240px, 38vw, 460px)',
                   cursor: 'pointer',
                   overflow: 'hidden'
                 }}
@@ -314,12 +343,10 @@ export default function DealPage() {
                   src={heroPhoto.url}
                   alt={heroPhoto.label || 'Property'}
                   style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover'
+                    objectFit: 'cover',
+                    objectPosition: 'center'
                   }}
                 />
                 {/* Click to enlarge hint */}
@@ -334,7 +361,7 @@ export default function DealPage() {
                   fontSize: 12,
                   fontWeight: 500
                 }}>
-                  {photos.length > 1 ? 'Swipe or click to enlarge' : 'Click to enlarge'}
+                  {photos.length > 1 ? `View all ${photos.length} photos` : 'Click to enlarge'}
                 </div>
                 {/* Address overlay */}
                 <div style={{
@@ -445,10 +472,10 @@ export default function DealPage() {
             </div>
           </div>
           {/* Details Section */}
-          <div style={{ padding: 'clamp(20px, 5vw, 40px)' }}>
+          <div className="deal-details" style={{ padding: 'clamp(20px, 5vw, 40px)' }}>
             
             {/* Stats Grid */}
-            <div style={{
+            <div className="deal-stats-grid" style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(4, 1fr)',
               gap: 'clamp(10px, 3vw, 20px)',
@@ -525,89 +552,6 @@ export default function DealPage() {
                   fontSize: 15,
                   marginBottom: 35
                 }}>{deal.conditionNotes}</p>
-              </>
-            )}
-            {/* Photo Grid */}
-            {photos.length > 0 && (
-              <>
-                <h2 style={{
-                  color: '#1a1a2e',
-                  borderBottom: '3px solid #00b894',
-                  paddingBottom: 12,
-                  marginBottom: 20,
-                  fontSize: 'clamp(18px, 4vw, 24px)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <span>Property Photos</span>
-                  {photos.length > 6 && (
-                    <button
-                      onClick={() => setGalleryOpen(true)}
-                      style={{
-                        background: '#00b894',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: 20,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      View All {photos.length} Photos
-                    </button>
-                  )}
-                </h2>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-                  gap: 12
-                }}>
-                  {photos.slice(0, 6).map((photo, i) => (
-                    <div
-                      key={i}
-                      onClick={() => openLightbox(i)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <img
-                        src={photo.url}
-                        alt={photo.label || `Photo ${i + 1}`}
-                        style={{
-                          width: '100%',
-                          height: 120,
-                          objectFit: 'cover',
-                          borderRadius: 8
-                        }}
-                      />
-                      <div style={{
-                        fontSize: 12,
-                        color: '#666',
-                        marginTop: 5,
-                        textAlign: 'center'
-                      }}>{photo.label}</div>
-                    </div>
-                  ))}
-                </div>
-                {photos.length > 6 && (
-                  <button
-                    onClick={() => setGalleryOpen(true)}
-                    style={{
-                      width: '100%',
-                      marginTop: 15,
-                      padding: 15,
-                      background: '#f8f9fa',
-                      border: '2px dashed #ddd',
-                      borderRadius: 10,
-                      cursor: 'pointer',
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: '#666'
-                    }}
-                  >
-                    + View All {photos.length} Photos
-                  </button>
-                )}
               </>
             )}
             {/* CTA Section */}
