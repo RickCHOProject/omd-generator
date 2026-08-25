@@ -7,3 +7,14 @@
 body {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
+
+@media (max-width: 640px) {
+  .deal-details {
+    padding: 22px 16px !important;
+  }
+
+  .deal-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-bottom: 28px !important;
+  }
+}
