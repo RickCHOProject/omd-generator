@@ -210,6 +210,12 @@ export default function DealPage() {
       trackDealEvent('interested');
     }
   };
+
+  const handleContactClick = async (event, eventType, href) => {
+    event.preventDefault();
+    await trackDealEvent(eventType);
+    window.location.href = href;
+  };
   // === END LEAD CAPTURE ===
 
   // Keyboard navigation for lightbox
@@ -614,7 +620,7 @@ export default function DealPage() {
               }}>
                 <a
                   href={`sms:${deal.phone || '480-266-3864'}`}
-                  onClick={() => trackDealEvent('text')}
+                  onClick={(event) => handleContactClick(event, 'text', `sms:${deal.phone || '480-266-3864'}`)}
                   style={{
                     display: 'inline-block',
                     background: 'linear-gradient(135deg, #00b894, #00cec9)',
@@ -630,7 +636,7 @@ export default function DealPage() {
                 </a>
                 <a
                   href={`tel:${deal.phone || '480-266-3864'}`}
-                  onClick={() => trackDealEvent('call')}
+                  onClick={(event) => handleContactClick(event, 'call', `tel:${deal.phone || '480-266-3864'}`)}
                   style={{
                     display: 'inline-block',
                     background: 'rgba(255,255,255,0.15)',
