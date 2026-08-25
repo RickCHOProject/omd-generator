@@ -22,20 +22,16 @@ body {
 
 @media (max-width: 760px) {
   .deal-price-banner {
-    padding: 24px 20px !important;
+    padding: 22px 18px !important;
   }
 
-  .deal-price-content {
-    grid-template-columns: 1fr !important;
-    gap: 18px !important;
+  .deal-price-summary {
+    flex-direction: column !important;
+    gap: 5px !important;
   }
 
-  .deal-price-primary {
-    text-align: center !important;
-  }
-
-  .deal-price-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  .deal-price-divider {
+    display: none !important;
   }
 
   .deal-details {
