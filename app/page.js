@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
-import { EMPTY_DEAL, getMissingDealFields, parseDealInput } from '../lib/dealParser.mjs';
+import { EMPTY_DEAL, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
@@ -66,53 +66,16 @@ export default function OMDGenerator() {
   const [activeImg, setActiveImg] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [polishingNotes, setPolishingNotes] = useState(false);
+  const [polishNotice, setPolishNotice] = useState('');
 
   // Polish raw notes into professional marketing copy - CLIENT SIDE ONLY
   const polishNotes = () => {
     if (!formData.conditionNotes.trim()) return;
     setPolishingNotes(true);
-    
-    let text = formData.conditionNotes;
-    
-    // Clean up common phrases
-    text = text
-      .replace(/hvac/gi, 'HVAC')
-      .replace(/(\d+)\s*yrs?\b/gi, '$1 years')
-      .replace(/is old like (\d+)/gi, 'is $1')
-      .replace(/but runs/gi, '- operational.')
-      .replace(/roof done (\d{4})/gi, 'Roof replaced $1.')
-      .replace(/seller says\.?\s*/gi, '')
-      .replace(/seller said\.?\s*/gi, '')
-      .replace(/is rough/gi, 'needs work -')
-      .replace(/cabinets falling off/gi, 'cabinets need replacement,')
-      .replace(/no dishwasher/gi, 'no dishwasher.')
-      .replace(/that old pink tile/gi, 'dated tile,')
-      .replace(/needs updating/gi, 'needs updating.')
-      .replace(/didnt see cracks/gi, 'no visible cracks.')
-      .replace(/didn't see cracks/gi, 'no visible cracks.')
-      .replace(/looks ok/gi, 'appears solid,')
-      .replace(/was converted/gi, 'converted,')
-      .replace(/not sure if permitted/gi, 'permit status unknown.')
-      .replace(/is gross/gi, 'needs attention -')
-      .replace(/green water/gi, 'needs draining,')
-      .replace(/pump might be shot/gi, 'pump may need replacement,')
-      .replace(/hasnt been touched in forever/gi, 'not recently maintained.')
-      .replace(/hasn't been touched in forever/gi, 'not recently maintained.')
-      .replace(/\.\./g, '.')
-      .replace(/,\./g, '.')
-      .replace(/\s+/g, ' ');
-    
-    // Capitalize first letter of each sentence
-    let sentences = text.split(/\.\s*/).filter(s => s.trim());
-    sentences = sentences.map(s => {
-      s = s.trim();
-      return s.charAt(0).toUpperCase() + s.slice(1);
-    });
-    
-    text = sentences.join('. ');
-    if (text && !text.endsWith('.')) text += '.';
-    
-    setFormData({ ...formData, conditionNotes: text });
+    const polished = polishConditionNotes(formData.conditionNotes);
+    const changed = polished !== formData.conditionNotes.trim();
+    setFormData({ ...formData, conditionNotes: polished });
+    setPolishNotice(changed ? 'Condition notes polished.' : 'Notes already look polished.');
     setPolishingNotes(false);
   };
 
@@ -126,6 +89,7 @@ export default function OMDGenerator() {
     setDealUrl('');
     setDealNumber('');
     setFacebookVariantOffset(0);
+    setPolishNotice('');
     setParseNotice(missingFields.length
       ? { type: 'warning', text: `Parsed the buyer-facing details found. Still needed: ${missingFields.join(', ')}.` }
       : { type: 'success', text: 'All buyer-facing deal fields were found.' });
@@ -543,7 +507,10 @@ Reply if interested`;
                 <label style={{ display: 'block', marginBottom: 5, fontWeight: 500, color: '#666' }}>Condition Notes</label>
                 <textarea
                   value={formData.conditionNotes}
-                  onChange={(e) => setFormData({ ...formData, conditionNotes: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, conditionNotes: e.target.value });
+                    setPolishNotice('');
+                  }}
                   style={{ width: '100%', height: 80, padding: 10, border: '1px solid #ddd', borderRadius: 6 }}
                 />
                 <button 
@@ -563,7 +530,9 @@ Reply if interested`;
                 >
                   {polishingNotes ? 'Polishing...' : '✨ Polish Notes for Buyers'}
                 </button>
-                <span style={{ marginLeft: 10, fontSize: 12, color: '#888' }}>Rewrites raw notes into professional marketing copy</span>
+                <span style={{ marginLeft: 10, fontSize: 12, color: polishNotice ? '#116149' : '#888' }}>
+                  {polishNotice || 'Rewrites raw notes into professional marketing copy'}
+                </span>
               </div>
             </div>
 
