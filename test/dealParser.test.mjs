@@ -191,7 +191,7 @@ CONDITION SUMMARY:
   assert.ok(getMissingDealFields(deal).includes('access'));
 });
 
-test('the master property package maps into OMD without internal handoff leakage', () => {
+test('a structured property package maps into OMD without internal handoff leakage', () => {
   const input = `OMD INPUT — PASTE THIS ENTIRE COMPLETED PACKAGE INTO OMD
 Address: 1160 Example Drive, Chandler, AZ 85224
 Asking Price: $250,000
