@@ -60,6 +60,8 @@ export default function DealPage() {
   // === VIEW TRACKING (NEW) — fires once on page load, fails silently ===
   useEffect(() => {
     if (!params.slug) return;
+    // Preview and local QA must never pollute production analytics.
+    if (typeof window !== 'undefined' && window.location.hostname !== 'deals.offmarketdaily.com') return;
     try {
       // Generate or retrieve a visitor ID so we can see repeat visitors
       let visitorId = null;
@@ -100,6 +102,8 @@ export default function DealPage() {
 
   useEffect(() => {
     if (!params.slug) return;
+    // Keep preview deployments read-only and prevent accidental test leads.
+    if (typeof window !== 'undefined' && window.location.hostname !== 'deals.offmarketdaily.com') return;
     // Check if already submitted or dismissed
     try {
       const dismissed = localStorage.getItem('omd_lead_' + params.slug);
