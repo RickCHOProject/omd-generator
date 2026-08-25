@@ -974,7 +974,7 @@ export default function OMDGenerator() {
             <div style={{ fontSize: 14, opacity: 0.9 }}>ASKING PRICE</div>
             <div style={{ fontSize: 48, fontWeight: 'bold' }}>${formatPrice(formData.askingPrice)}</div>
             <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.2)', display: 'inline-block', padding: '8px 20px', borderRadius: 20 }}>
-              Estimated ARV: $${formatPrice(formData.arv)}
+              Estimated ARV: ${formatPrice(formData.arv)}
             </div>
           </div>
 
