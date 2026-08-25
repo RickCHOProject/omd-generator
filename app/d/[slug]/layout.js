@@ -1,3 +1,5 @@
+import { isPublicDeal } from '../../../lib/dealRecord.mjs';
+
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
 
@@ -17,7 +19,8 @@ async function getDeal(slug) {
     );
     if (!response.ok) return null;
     const rows = await response.json();
-    return rows?.[0]?.data || null;
+    const deal = rows?.[0]?.data || null;
+    return isPublicDeal(deal) ? deal : null;
   } catch {
     return null;
   }
