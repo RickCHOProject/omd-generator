@@ -387,7 +387,7 @@ export default function DealPage() {
               </div>
               {/* Thumbnail Strip */}
               {photos.length > 1 && (
-                <div style={{
+                <div className="deal-thumbnail-strip" style={{
                   display: 'flex',
                   gap: 8,
                   padding: '12px 20px',
