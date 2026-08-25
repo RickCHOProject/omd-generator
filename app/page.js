@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
@@ -62,6 +63,7 @@ export default function OMDGenerator() {
   const [publishing, setPublishing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [buyerTeaser, setBuyerTeaser] = useState('');
+  const [facebookVariantOffset, setFacebookVariantOffset] = useState(0);
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
@@ -156,7 +158,7 @@ export default function OMDGenerator() {
     if (m) data.zip = m[1];
 
     // ASKING PRICE
-    m = t.match(/asking\s+(\d+k?)/i);
+    m = t.match(/asking(?:\s+price)?[^0-9]*([\d,]+k?)/i);
     if (m) data.askingPrice = toNumber(m[1]);
 
     // ARV
@@ -172,38 +174,52 @@ export default function OMDGenerator() {
     if (m) data.baths = m[1];
 
     // SQFT
-    m = t.match(/sqft\s*(\d+)/i) || t.match(/(\d+)\s*sqft/i);
-    if (m) data.sqft = m[1];
+    m = t.match(/sqft\s*([\d,]+)/i) || t.match(/([\d,]+)\s*(?:sqft|sq\.?\s*ft)/i);
+    if (m) data.sqft = toNumber(m[1]);
 
     // YEAR BUILT
     m = t.match(/built\s*(19\d{2}|20\d{2})/i);
     if (m) data.yearBuilt = m[1];
 
     // OCCUPANCY
-    m = t.match(/(vacant|occupied|tenant)/i);
+    m = t.match(/(tenant occupied|owner occupied|vacant|occupied|tenant)/i);
     if (m) data.occupancy = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
 
     // ACCESS / LOCKBOX
     m = t.match(/lockbox\s*(?:code)?\s*(\d+)/i);
-    if (m) data.access = 'Lockbox ' + m[1];
+    if (m) {
+      data.access = 'Lockbox ' + m[1];
+    } else {
+      m = t.match(/access\s*:?\s*([^\n]+)/i);
+      if (m) data.access = m[1].trim();
+    }
 
     // COE
-    m = t.match(/close\s*by\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+    m = t.match(/(?:coe|close\s+by|close(?:\s+of\s+escrow)?)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
     if (m) data.coe = m[1];
 
     // EMD
-    m = t.match(/emd\s+(\d+k?)/i);
+    m = t.match(/emd[^0-9]*([\d,]+k?)/i);
     if (m) data.emd = toNumber(m[1]);
 
     // HOA
     m = t.match(/hoa\s+\$?(\d+(?:\/mo)?)/i);
     if (m) data.hoa = m[1];
 
+    // PHONE
+    m = t.match(/(?:phone|call|text)\s*:?\s*(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i);
+    if (m) {
+      const phoneDigits = m[1].replace(/\D/g, '');
+      data.phone = phoneDigits.length === 10
+        ? `${phoneDigits.slice(0, 3)}-${phoneDigits.slice(3, 6)}-${phoneDigits.slice(6)}`
+        : m[1].trim();
+    }
+
     // CONDITION NOTES
     const noteStart = tLower.search(/hvac|roof|kitchen/);
     if (noteStart !== -1) {
       let content = t.substring(noteStart);
-      const stopIdx = content.toLowerCase().search(/lockbox|seller wants/);
+      const stopIdx = content.toLowerCase().search(/lockbox|seller wants|\nphone\s*:|\ncall\s*:|\ntext\s*:/);
       if (stopIdx > 0) content = content.substring(0, stopIdx);
       data.conditionNotes = content.trim();
     }
@@ -400,6 +416,11 @@ ${formData.conditionNotes}
 
 Reply if interested`;
   };
+
+  const generateFacebookPost = () => buildFacebookPost(formData, {
+    variantIndex: getFacebookVariantIndex(formData) + facebookVariantOffset,
+    dealUrl
+  });
 
   const generateEmailHTML = () => {
     return `<!DOCTYPE html>
@@ -687,7 +708,7 @@ Reply if interested`;
               </div>
             </div>
 
-            <div style={{ marginTop: 30, display: 'flex', gap: 10 }}>
+            <div style={{ marginTop: 30, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: 10 }}>
               <button onClick={() => { 
                 const extIdx = photos.findIndex(p => p.label === 'Exterior - Front');
                 setActiveImg(extIdx >= 0 ? extIdx : 0);
@@ -700,6 +721,9 @@ Reply if interested`;
               </button>
               <button onClick={() => setPreviewMode('text')} style={{ flex: 1, background: '#666', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
                 Text Blast →
+              </button>
+              <button onClick={() => setPreviewMode('facebook')} style={{ flex: 1, background: '#1877f2', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
+                Facebook Post →
               </button>
             </div>
           </div>
@@ -1088,12 +1112,63 @@ Reply if interested`;
           {dealUrl && (
             <div style={{ padding: 20, background: '#e8f5e9', margin: 20, borderRadius: 8 }}>
               <strong>Deal Published{dealNumber ? ` — Deal #${dealNumber}` : ''}!</strong>
-              <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+              <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <input type="text" value={dealUrl} readOnly style={{ flex: 1, padding: 10, borderRadius: 6, border: '1px solid #ddd' }} />
                 <button onClick={() => copyToClipboard(dealUrl)} style={{ padding: '10px 20px', background: '#00b894', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Copy</button>
+                <button onClick={() => setPreviewMode('facebook')} style={{ padding: '10px 20px', background: '#1877f2', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Facebook Post</button>
               </div>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // FACEBOOK POST PREVIEW
+  if (previewMode === 'facebook') {
+    const facebookPost = generateFacebookPost();
+    return (
+      <div style={{ minHeight: '100vh', background: '#eef1f6', padding: 20 }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #d7dbe2', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
+              ← Edit deal
+            </button>
+            <span style={{ color: '#5f6673', fontSize: 13 }}>The property image is selected separately from Drive when posting.</span>
+          </div>
+
+          <section style={{ background: 'white', padding: 24, borderRadius: 14, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+            <h1 style={{ margin: '0 0 6px', color: '#1a1a2e', fontSize: 24 }}>Facebook Post</h1>
+            <p style={{ margin: '0 0 18px', color: '#68707d', lineHeight: 1.5 }}>
+              This caption uses the same deal information already entered in the generator. Refreshing changes the wording, not the facts.
+            </p>
+
+            {!dealUrl && (
+              <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: '#fff6df', color: '#795500', fontSize: 14 }}>
+                Publish the OMD page first. The live deal link will then be added automatically.
+              </div>
+            )}
+
+            <div style={{ padding: 20, borderRadius: 10, background: '#f7f8fa', border: '1px solid #e1e4e9', whiteSpace: 'pre-wrap', fontFamily: 'Arial, sans-serif', fontSize: 15, lineHeight: 1.6, color: '#242933' }}>
+              {facebookPost}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginTop: 15 }}>
+              <button
+                onClick={() => setFacebookVariantOffset((current) => (current + 1) % FACEBOOK_VARIANT_COUNT)}
+                style={{ background: 'white', color: '#1a1a2e', border: '1px solid #cfd4dc', padding: 14, borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}
+              >
+                Try Different Wording
+              </button>
+              <button
+                onClick={() => copyToClipboard(facebookPost)}
+                disabled={!dealUrl}
+                style={{ background: dealUrl ? '#1877f2' : '#aeb7c6', color: 'white', border: 'none', padding: 14, borderRadius: 8, cursor: dealUrl ? 'pointer' : 'not-allowed', fontWeight: 700 }}
+              >
+                Copy Facebook Post
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     );
