@@ -190,3 +190,68 @@ CONDITION SUMMARY:
   assert.ok(getMissingDealFields(deal).includes('address'));
   assert.ok(getMissingDealFields(deal).includes('access'));
 });
+
+test('the master property package maps into OMD without internal handoff leakage', () => {
+  const input = `OMD INPUT — PASTE THIS ENTIRE COMPLETED PACKAGE INTO OMD
+Address: 1160 Example Drive, Chandler, AZ 85224
+Asking Price: $250,000
+Estimated ARV: $340,000
+Bed/Bath Count: 3 bedrooms / 2.5 bathrooms
+Sqft: 1543
+Year Built: 1998
+Occupancy: Owner occupied
+Access: By appointment
+Close of Escrow: 09/30/2026
+EMD: $7,000
+HOA: N/A
+Google Drive Photo Link: https://drive.google.com/drive/folders/abc123
+
+CONDITION SUMMARY
+Overall Property Condition: Light cosmetic updates needed
+HVAC Age/Condition: Replaced in 2022
+Roof Age/Condition: About 10 years old
+
+INTERNAL HANDOFF — DO NOT PUBLISH ON THE BUYER DEAL PAGE
+Seller Contact: Private Seller
+Commission Agreed To: 3%
+Additional Negotiated Terms: Seller may leave personal property
+
+FINAL QA BEFORE HANDOFF
+The deal thread title is the full property address.`;
+
+  const deal = parseDealInput(input);
+  assert.deepEqual({
+    address: deal.address,
+    city: deal.city,
+    state: deal.state,
+    zip: deal.zip,
+    askingPrice: deal.askingPrice,
+    arv: deal.arv,
+    beds: deal.beds,
+    baths: deal.baths,
+    sqft: deal.sqft,
+    yearBuilt: deal.yearBuilt,
+    occupancy: deal.occupancy,
+    access: deal.access,
+    coe: deal.coe,
+    emd: deal.emd
+  }, {
+    address: '1160 Example Drive',
+    city: 'Chandler',
+    state: 'AZ',
+    zip: '85224',
+    askingPrice: '250000',
+    arv: '340000',
+    beds: '3',
+    baths: '2.5',
+    sqft: '1543',
+    yearBuilt: '1998',
+    occupancy: 'Owner occupied',
+    access: 'By appointment',
+    coe: '09/30/2026',
+    emd: '7000'
+  });
+  assert.equal(extractTextBlastPhotoLink(input), 'https://drive.google.com/drive/folders/abc123');
+  assert.match(deal.conditionNotes, /Light cosmetic updates needed/);
+  assert.doesNotMatch(deal.conditionNotes, /Private Seller|3%|personal property|thread title/i);
+});
