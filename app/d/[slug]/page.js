@@ -453,51 +453,35 @@ export default function DealPage() {
           {/* Price Banner */}
           <div className="deal-price-banner" style={{
             background: 'linear-gradient(135deg, #00b894, #00cec9)',
-            padding: '26px clamp(22px, 5vw, 48px)',
+            padding: '24px clamp(22px, 5vw, 48px)',
             color: 'white'
           }}>
-            <div className="deal-price-content" style={{
-              maxWidth: 1020,
+            <div style={{
+              maxWidth: 760,
               margin: '0 auto',
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1.15fr) minmax(360px, 0.85fr)',
-              gap: 30,
-              alignItems: 'center'
+              textAlign: 'center'
             }}>
-              <div className="deal-price-primary" style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 13, opacity: 0.9, letterSpacing: 1.4, fontWeight: 600 }}>ASKING PRICE</div>
-                <div style={{
-                  fontSize: 'clamp(44px, 6vw, 64px)',
-                  lineHeight: 1.05,
-                  fontWeight: 800,
-                  marginTop: 7
-                }}>${formatPrice(deal.askingPrice)}</div>
-              </div>
-              <div className="deal-price-metrics" style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                gap: 12
+              <div style={{ fontSize: 12, opacity: 0.9, letterSpacing: 1.5, fontWeight: 700 }}>ASKING PRICE</div>
+              <div style={{
+                fontSize: 'clamp(42px, 6vw, 60px)',
+                lineHeight: 1.05,
+                fontWeight: 800,
+                marginTop: 6
+              }}>${formatPrice(deal.askingPrice)}</div>
+              <div className="deal-price-summary" style={{
+                marginTop: 14,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 14,
+                fontSize: 'clamp(14px, 1.8vw, 18px)',
+                fontWeight: 500
               }}>
-                <div style={{
-                  background: 'rgba(255,255,255,0.18)',
-                  border: '1px solid rgba(255,255,255,0.24)',
-                  borderRadius: 14,
-                  padding: '17px 16px'
-                }}>
-                  <div style={{ fontSize: 11, opacity: 0.86, letterSpacing: 1, fontWeight: 700 }}>ESTIMATED ARV</div>
-                  <div style={{ fontSize: 'clamp(21px, 2.3vw, 29px)', fontWeight: 800, marginTop: 5 }}>${formatPrice(deal.arv)}</div>
-                </div>
-                <div style={{
-                  background: 'rgba(255,255,255,0.18)',
-                  border: '1px solid rgba(255,255,255,0.24)',
-                  borderRadius: 14,
-                  padding: '17px 16px'
-                }}>
-                  <div style={{ fontSize: 11, opacity: 0.86, letterSpacing: 1, fontWeight: 700 }}>GROSS SPREAD</div>
-                  <div style={{ fontSize: 'clamp(21px, 2.3vw, 29px)', fontWeight: 800, marginTop: 5 }}>${formatPrice(spread)}</div>
-                  <div style={{ fontSize: 10, opacity: 0.78, marginTop: 2 }}>Before repairs &amp; costs</div>
-                </div>
+                <span><span style={{ opacity: 0.84 }}>Estimated ARV:</span> <strong>${formatPrice(deal.arv)}</strong></span>
+                <span className="deal-price-divider" style={{ opacity: 0.6 }}>•</span>
+                <span><span style={{ opacity: 0.84 }}>Gross Spread:</span> <strong>${formatPrice(spread)}</strong></span>
               </div>
+              <div style={{ fontSize: 10, opacity: 0.76, marginTop: 5 }}>Gross spread shown before repairs &amp; costs</div>
             </div>
           </div>
           {/* Details Section */}
