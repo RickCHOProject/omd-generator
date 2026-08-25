@@ -284,7 +284,6 @@ export default function DealPage() {
       </div>
     );
   }
-  const spread = (Number(deal.arv) || 0) - (Number(deal.askingPrice) || 0);
   const photos = deal.photos || [];
   const heroPhoto = photos[selectedPhotoIndex] || photos[0];
   const maxThumbnails = 5;
@@ -478,10 +477,7 @@ export default function DealPage() {
                 fontWeight: 500
               }}>
                 <span><span style={{ opacity: 0.84 }}>Estimated ARV:</span> <strong>${formatPrice(deal.arv)}</strong></span>
-                <span className="deal-price-divider" style={{ opacity: 0.6 }}>•</span>
-                <span><span style={{ opacity: 0.84 }}>Gross Spread:</span> <strong>${formatPrice(spread)}</strong></span>
               </div>
-              <div style={{ fontSize: 10, opacity: 0.76, marginTop: 5 }}>Gross spread shown before repairs &amp; costs</div>
             </div>
           </div>
           {/* Details Section */}
