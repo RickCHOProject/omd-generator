@@ -16,7 +16,28 @@ body {
   display: none;
 }
 
+.deal-details {
+  padding-top: 30px !important;
+}
+
 @media (max-width: 640px) {
+  .deal-price-banner {
+    padding: 24px 20px !important;
+  }
+
+  .deal-price-content {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .deal-price-primary {
+    text-align: center !important;
+  }
+
+  .deal-price-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
   .deal-details {
     padding: 22px 16px !important;
   }
