@@ -1001,10 +1001,7 @@ export default function OMDGenerator() {
     return (
       <div style={{ minHeight: '100vh', background: '#eef1f6', padding: 20 }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #d7dbe2', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
-              ← Edit deal
-            </button>
+          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ color: '#5f6673', fontSize: 13 }}>The property image is selected separately from Drive when posting.</span>
           </div>
 
@@ -1040,6 +1037,12 @@ export default function OMDGenerator() {
               </button>
             </div>
           </section>
+
+          <div style={{ marginTop: 20 }}>
+            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #d7dbe2', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
+              ← Edit
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1071,12 +1074,6 @@ export default function OMDGenerator() {
     return (
       <div style={{ minHeight: '100vh', background: '#f8f9fa', padding: 20 }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
-          <div style={{ marginBottom: 20 }}>
-            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
-              ← Edit
-            </button>
-          </div>
-
           <div style={{ background: 'white', padding: 20, borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Buyer Teaser (Initial Text - No Link)</h3>
             <div style={{ background: '#f8f9fa', padding: 15, borderRadius: 8, fontFamily: 'monospace', fontSize: 14, marginBottom: 15 }}>
@@ -1118,6 +1115,12 @@ export default function OMDGenerator() {
             </pre>
             <button onClick={() => copyToClipboard(generateTextBlast())} style={{ marginTop: 15, width: '100%', background: '#00b894', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
               Copy Text Blast
+            </button>
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            <button onClick={() => setPreviewMode(null)} style={{ padding: '12px 24px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: 'white' }}>
+              ← Edit
             </button>
           </div>
         </div>
