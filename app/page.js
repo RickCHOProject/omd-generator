@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
-import { EMPTY_DEAL, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
+import { EMPTY_DEAL, extractTextBlastPhotoLink, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
 import { buildTextBlast } from '../lib/textBlast.mjs';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
@@ -91,7 +91,7 @@ export default function OMDGenerator() {
     setDealUrl('');
     setDealNumber('');
     setFacebookVariantOffset(0);
-    setTextBlastPhotoLink('');
+    setTextBlastPhotoLink(extractTextBlastPhotoLink(rawInput));
     setPolishNotice('');
     setParseNotice(missingFields.length
       ? { type: 'warning', text: `Parsed the buyer-facing details found. Still needed: ${missingFields.join(', ')}.` }

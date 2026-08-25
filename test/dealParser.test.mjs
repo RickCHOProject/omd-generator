@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
+import { extractTextBlastPhotoLink, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
 
 const acquisitionsPackage = `MANDATORY Property Package:
 
@@ -164,4 +164,29 @@ test('polish still cleans rough field notes', () => {
   const polished = polishConditionNotes('hvac is old like 15 yrs but runs. roof done 2019. kitchen is rough cabinets falling off no dishwasher.');
 
   assert.equal(polished, 'HVAC is 15 years and is operational. Roof replaced 2019. Kitchen needs work cabinets need replacement no dishwasher.');
+});
+
+test('extractTextBlastPhotoLink reads the dedicated Google Drive field', () => {
+  assert.equal(
+    extractTextBlastPhotoLink('Google Drive Photo Link: https://drive.google.com/drive/folders/abc123'),
+    'https://drive.google.com/drive/folders/abc123'
+  );
+  assert.equal(extractTextBlastPhotoLink('Google Drive Photo Link: Not confirmed'), '');
+});
+
+test('not confirmed values remain missing and stay out of condition notes', () => {
+  const deal = parseDealInput(`
+Address: Not confirmed
+Access: Not confirmed
+CONDITION SUMMARY:
+- Overall Property Condition: Not confirmed
+- HVAC Age/Condition: Replaced in 2022
+- Roof Age/Condition: Not confirmed
+  `);
+
+  assert.equal(deal.address, '');
+  assert.equal(deal.access, '');
+  assert.equal(deal.conditionNotes, 'HVAC Age/Condition: Replaced in 2022.');
+  assert.ok(getMissingDealFields(deal).includes('address'));
+  assert.ok(getMissingDealFields(deal).includes('access'));
 });
