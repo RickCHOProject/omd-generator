@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
 import { EMPTY_DEAL, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
+import { buildTextBlast } from '../lib/textBlast.mjs';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
@@ -59,6 +60,7 @@ export default function OMDGenerator() {
   const [publishing, setPublishing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [buyerTeaser, setBuyerTeaser] = useState('');
+  const [textBlastPhotoLink, setTextBlastPhotoLink] = useState('');
   const [facebookVariantOffset, setFacebookVariantOffset] = useState(0);
   const [generatingTeaser, setGeneratingTeaser] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -89,6 +91,7 @@ export default function OMDGenerator() {
     setDealUrl('');
     setDealNumber('');
     setFacebookVariantOffset(0);
+    setTextBlastPhotoLink('');
     setPolishNotice('');
     setParseNotice(missingFields.length
       ? { type: 'warning', text: `Parsed the buyer-facing details found. Still needed: ${missingFields.join(', ')}.` }
@@ -262,28 +265,10 @@ export default function OMDGenerator() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  const generateTextBlast = () => {
-    return `New Deal - ${formData.city}, ${formData.state}
-
-Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}
-Asking Price: $${formatPrice(formData.askingPrice)}
-Estimated ARV: $${formatPrice(formData.arv)}
-Beds/Baths: ${formData.beds}/${formData.baths}
-Living Area Size: ${formatPrice(formData.sqft)} (Sq. Ft)
-Year Built: ${formData.yearBuilt}
-Occupancy Status at Closing: ${formData.occupancy || 'TBD'}
-Access: ${formData.access || 'Easy Access'}
-COE: ${formData.coe}
-EMD: $${formatPrice(formData.emd)}
-${dealUrl ? `Link: ${dealUrl}` : ''}
-
-${spread > 80000 ? `Over $${formatPrice(spread)} spread potential here.` : `$${formatPrice(spread)} spread on this one.`}
-
-Notes:
-${formData.conditionNotes}
-
-Reply if interested`;
-  };
+  const generateTextBlast = () => buildTextBlast(formData, {
+    dealUrl,
+    photoLink: textBlastPhotoLink
+  });
 
   const generateFacebookPost = () => buildFacebookPost(formData, {
     variantIndex: getFacebookVariantIndex(formData) + facebookVariantOffset,
@@ -1115,6 +1100,19 @@ Reply if interested`;
 
           <div style={{ background: 'white', padding: 20, borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Full Text Blast (For Dispo Partners)</h3>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, color: '#555', fontSize: 13 }}>
+              Google Drive Photo Link
+            </label>
+            <input
+              type="url"
+              value={textBlastPhotoLink}
+              onChange={(e) => setTextBlastPhotoLink(e.target.value)}
+              placeholder="Paste the Google Drive photo link here"
+              style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 8, marginBottom: 15, fontSize: 14 }}
+            />
+            <div style={{ margin: '-7px 0 15px', color: '#888', fontSize: 12 }}>
+              This link is used only in the Text Blast.
+            </div>
             <pre style={{ background: '#f8f9fa', padding: 20, borderRadius: 8, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
               {generateTextBlast()}
             </pre>
