@@ -30,10 +30,6 @@ body {
     gap: 5px !important;
   }
 
-  .deal-price-divider {
-    display: none !important;
-  }
-
   .deal-details {
     padding: 22px 16px !important;
   }
