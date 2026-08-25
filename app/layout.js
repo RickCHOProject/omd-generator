@@ -1,8 +1,8 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'OffMarket Daily - Deal Generator',
-  description: 'Generate professional deal pages',
+  title: 'Off Market Daily | Staff Portal',
+  description: 'Off Market Daily deal publishing and management portal',
 }
 
 export default function RootLayout({ children }) {
