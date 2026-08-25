@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getMissingDealFields, parseDealInput } from '../lib/dealParser.mjs';
+import { getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
 
 const acquisitionsPackage = `MANDATORY Property Package:
 
@@ -145,4 +145,23 @@ test('parsing a new deal resets absent values instead of keeping stale facts', (
   assert.equal(first.askingPrice, '100000');
   assert.equal(second.askingPrice, '');
   assert.equal(second.city, '');
+});
+
+test('polish rewrites acquisition-style notes into buyer-facing language', () => {
+  const raw = 'Property is not updated to today’s standards. Seller has completed some updates inside the home. Home is described as well cared for and well lived in. No major issues with the home were mentioned. Roof is believed to be about 10 years old. AC is believed to be less than 10 years old. Seller recently installed new turf in the backyard.';
+  const polished = polishConditionNotes(raw);
+
+  assert.match(polished, /not fully updated to current standards/);
+  assert.match(polished, /Some interior updates have been completed/);
+  assert.match(polished, /No major issues were reported/);
+  assert.match(polished, /The roof is reported to be about 10 years old/);
+  assert.match(polished, /New turf was recently installed in the backyard/);
+  assert.doesNotMatch(polished, /Seller/);
+  assert.notEqual(polished, raw);
+});
+
+test('polish still cleans rough field notes', () => {
+  const polished = polishConditionNotes('hvac is old like 15 yrs but runs. roof done 2019. kitchen is rough cabinets falling off no dishwasher.');
+
+  assert.equal(polished, 'HVAC is 15 years and is operational. Roof replaced 2019. Kitchen needs work cabinets need replacement no dishwasher.');
 });
