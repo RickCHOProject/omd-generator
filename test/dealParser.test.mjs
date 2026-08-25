@@ -65,6 +65,19 @@ test('lot size can never replace living-area square footage', () => {
   assert.notEqual(deal.sqft, '4278');
 });
 
+test('address can follow the mandatory package heading on the same line', () => {
+  const deal = parseDealInput(`MANDATORY Property Package: 1160 N Bullmoose Dr, Chandler, AZ 85224
+- Bed/Bath count: 3 bedrooms / 2.5 bathrooms
+- Sqft: 1543
+- Lot Size: 4,278 sq ft`);
+
+  assert.equal(deal.address, '1160 N Bullmoose Dr');
+  assert.equal(deal.city, 'Chandler');
+  assert.equal(deal.state, 'AZ');
+  assert.equal(deal.zip, '85224');
+  assert.equal(deal.sqft, '1543');
+});
+
 test('missing buyer-facing fields are reported instead of invented', () => {
   const missing = getMissingDealFields(parseDealInput(acquisitionsPackage));
 
