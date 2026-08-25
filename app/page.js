@@ -298,10 +298,6 @@ export default function OMDGenerator() {
     return Number(num).toLocaleString();
   };
 
-  const spread = formData.arv && formData.askingPrice 
-    ? Number(formData.arv) - Number(formData.askingPrice) 
-    : 0;
-
   const totalPhotoSize = photos.reduce((sum, p) => sum + (p.size || 0), 0);
   const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
@@ -383,7 +379,7 @@ export default function OMDGenerator() {
                     <table border="0" cellpadding="0" cellspacing="0" bgcolor="#008577" style="background-color:#008577;border-radius:20px;">
                       <tr>
                         <td style="padding:8px 20px;font-size:14px;color:#ffffff;font-family:Arial,sans-serif;">
-                          ARV: $${formatPrice(formData.arv)} | Spread: $${formatPrice(spread)}
+                          Estimated ARV: $${formatPrice(formData.arv)}
                         </td>
                       </tr>
                     </table>
@@ -978,7 +974,7 @@ export default function OMDGenerator() {
             <div style={{ fontSize: 14, opacity: 0.9 }}>ASKING PRICE</div>
             <div style={{ fontSize: 48, fontWeight: 'bold' }}>${formatPrice(formData.askingPrice)}</div>
             <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.2)', display: 'inline-block', padding: '8px 20px', borderRadius: 20 }}>
-              ARV: ${formatPrice(formData.arv)} | Spread: ${formatPrice(spread)}
+              Estimated ARV: $${formatPrice(formData.arv)}
             </div>
           </div>
 
