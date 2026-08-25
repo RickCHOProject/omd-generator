@@ -294,7 +294,7 @@ export default function DealPage() {
       {/* Main Page */}
       <div style={{
         minHeight: '100vh',
-        background: '#f8f9fa',
+        background: '#eef1f4',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
         {/* Centered listing container */}
@@ -451,28 +451,53 @@ export default function DealPage() {
             </div>
           )}
           {/* Price Banner */}
-          <div style={{
+          <div className="deal-price-banner" style={{
             background: 'linear-gradient(135deg, #00b894, #00cec9)',
-            padding: 'clamp(20px, 5vw, 30px)',
-            textAlign: 'center',
+            padding: '26px clamp(22px, 5vw, 48px)',
             color: 'white'
           }}>
-            <div style={{ fontSize: 14, opacity: 0.9, letterSpacing: 1 }}>ASKING PRICE</div>
-            <div style={{
-              fontSize: 'clamp(36px, 10vw, 52px)',
-              fontWeight: 'bold',
-              margin: '5px 0'
-            }}>${formatPrice(deal.askingPrice)}</div>
-            <div style={{
-              marginTop: 12,
-              background: 'rgba(255,255,255,0.2)',
-              display: 'inline-block',
-              padding: '10px 24px',
-              borderRadius: 25,
-              fontSize: 'clamp(13px, 3vw, 15px)',
-              fontWeight: 500
+            <div className="deal-price-content" style={{
+              maxWidth: 1020,
+              margin: '0 auto',
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1.15fr) minmax(360px, 0.85fr)',
+              gap: 30,
+              alignItems: 'center'
             }}>
-              ARV: ${formatPrice(deal.arv)} &nbsp;|&nbsp; Spread: ${formatPrice(spread)}
+              <div className="deal-price-primary" style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 13, opacity: 0.9, letterSpacing: 1.4, fontWeight: 600 }}>ASKING PRICE</div>
+                <div style={{
+                  fontSize: 'clamp(44px, 6vw, 64px)',
+                  lineHeight: 1.05,
+                  fontWeight: 800,
+                  marginTop: 7
+                }}>${formatPrice(deal.askingPrice)}</div>
+              </div>
+              <div className="deal-price-metrics" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: 12
+              }}>
+                <div style={{
+                  background: 'rgba(255,255,255,0.18)',
+                  border: '1px solid rgba(255,255,255,0.24)',
+                  borderRadius: 14,
+                  padding: '17px 16px'
+                }}>
+                  <div style={{ fontSize: 11, opacity: 0.86, letterSpacing: 1, fontWeight: 700 }}>ESTIMATED ARV</div>
+                  <div style={{ fontSize: 'clamp(21px, 2.3vw, 29px)', fontWeight: 800, marginTop: 5 }}>${formatPrice(deal.arv)}</div>
+                </div>
+                <div style={{
+                  background: 'rgba(255,255,255,0.18)',
+                  border: '1px solid rgba(255,255,255,0.24)',
+                  borderRadius: 14,
+                  padding: '17px 16px'
+                }}>
+                  <div style={{ fontSize: 11, opacity: 0.86, letterSpacing: 1, fontWeight: 700 }}>GROSS SPREAD</div>
+                  <div style={{ fontSize: 'clamp(21px, 2.3vw, 29px)', fontWeight: 800, marginTop: 5 }}>${formatPrice(spread)}</div>
+                  <div style={{ fontSize: 10, opacity: 0.78, marginTop: 2 }}>Before repairs &amp; costs</div>
+                </div>
+              </div>
             </div>
           </div>
           {/* Details Section */}
