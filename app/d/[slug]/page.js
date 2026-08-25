@@ -33,6 +33,8 @@ export default function DealPage() {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const trackedViewRef = useRef('');
+  const interestedTrackedRef = useRef(false);
 
   // === SWIPE SUPPORT (NEW) ===
   const touchStartX = useRef(0);
@@ -59,43 +61,52 @@ export default function DealPage() {
     if (params.slug) fetchDeal();
   }, [params.slug]);
 
-  // === VIEW TRACKING (NEW) — fires once on page load, fails silently ===
+  const getVisitorId = () => {
+    try {
+      let visitorId = localStorage.getItem('omd_visitor_id');
+      if (!visitorId) {
+        visitorId = 'v_' + Math.random().toString(36).slice(2, 14) + Date.now().toString(36);
+        localStorage.setItem('omd_visitor_id', visitorId);
+      }
+      return visitorId;
+    } catch (error) {
+      return 'anon_' + Math.random().toString(36).slice(2, 10);
+    }
+  };
+
+  const trackDealEvent = async (eventType) => {
+    if (typeof window === 'undefined' || window.location.hostname !== 'deals.offmarketdaily.com') {
+      return { tracked: false, skipped: 'non-production' };
+    }
+
+    try {
+      const response = await fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          dealSlug: params.slug,
+          eventType,
+          visitorId: getVisitorId(),
+          referrer: document.referrer || null,
+          userAgent: navigator.userAgent || null
+        })
+      });
+      if (!response.ok) throw new Error(`Tracking failed with status ${response.status}.`);
+      return response.json();
+    } catch (error) {
+      console.warn(`OMD ${eventType} tracking failed:`, error);
+      return { tracked: false, error: true };
+    }
+  };
+
+  // Record one page view per mounted deal page. Clicks use the same reliable endpoint.
   useEffect(() => {
     if (!params.slug || !deal) return;
-    // Preview and local QA must never pollute production analytics.
-    if (typeof window !== 'undefined' && window.location.hostname !== 'deals.offmarketdaily.com') return;
-    try {
-      // Generate or retrieve a visitor ID so we can see repeat visitors
-      let visitorId = null;
-      try {
-        visitorId = localStorage.getItem('omd_visitor_id');
-        if (!visitorId) {
-          visitorId = 'v_' + Math.random().toString(36).substr(2, 12) + Date.now().toString(36);
-          localStorage.setItem('omd_visitor_id', visitorId);
-        }
-      } catch (e) {
-        visitorId = 'anon_' + Math.random().toString(36).substr(2, 8);
-      }
-      fetch(`${SUPABASE_URL}/rest/v1/deal_views`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          deal_slug: params.slug,
-          visitor_id: visitorId,
-          referrer: typeof document !== 'undefined' ? document.referrer || null : null,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
-        })
-      }).catch(() => {}); // Fail silently — never break the page
-    } catch (e) {
-      // Tracking should NEVER break the deal page
-    }
+    if (trackedViewRef.current === params.slug) return;
+    trackedViewRef.current = params.slug;
+    trackDealEvent('view');
   }, [params.slug, deal]);
-  // === END VIEW TRACKING ===
 
   // === LEAD CAPTURE POPUP ===
   const [showLeadPopup, setShowLeadPopup] = useState(false);
@@ -152,9 +163,13 @@ export default function DealPage() {
   const submitLead = async () => {
     if (!leadForm.name && !leadForm.email) return;
     try {
+      if (typeof window !== 'undefined' && window.location.hostname !== 'deals.offmarketdaily.com') {
+        setLeadSubmitted(true);
+        return;
+      }
       let visitorId = null;
       try { visitorId = localStorage.getItem('omd_visitor_id'); } catch (e) {}
-      await fetch(`${SUPABASE_URL}/rest/v1/deal_leads`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/deal_leads`, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_ANON_KEY,
@@ -170,6 +185,11 @@ export default function DealPage() {
           phone: leadForm.phone || null
         })
       });
+      if (!response.ok) throw new Error(`Lead submission failed with status ${response.status}.`);
+      if (!interestedTrackedRef.current) {
+        interestedTrackedRef.current = true;
+        trackDealEvent('interested');
+      }
       setLeadSubmitted(true);
       try { localStorage.setItem('omd_lead_' + params.slug, 'submitted'); } catch (e) {}
       setTimeout(() => setShowLeadPopup(false), 2000);
@@ -181,6 +201,14 @@ export default function DealPage() {
   const dismissPopup = () => {
     setShowLeadPopup(false);
     try { localStorage.setItem('omd_lead_' + params.slug, 'dismissed'); } catch (e) {}
+  };
+
+  const openInterestedForm = () => {
+    setShowLeadPopup(true);
+    if (!interestedTrackedRef.current) {
+      interestedTrackedRef.current = true;
+      trackDealEvent('interested');
+    }
   };
   // === END LEAD CAPTURE ===
 
@@ -586,6 +614,7 @@ export default function DealPage() {
               }}>
                 <a
                   href={`sms:${deal.phone || '480-266-3864'}`}
+                  onClick={() => trackDealEvent('text')}
                   style={{
                     display: 'inline-block',
                     background: 'linear-gradient(135deg, #00b894, #00cec9)',
@@ -601,6 +630,7 @@ export default function DealPage() {
                 </a>
                 <a
                   href={`tel:${deal.phone || '480-266-3864'}`}
+                  onClick={() => trackDealEvent('call')}
                   style={{
                     display: 'inline-block',
                     background: 'rgba(255,255,255,0.15)',
@@ -615,6 +645,23 @@ export default function DealPage() {
                 >
                   📞 Call
                 </a>
+                <button
+                  type="button"
+                  onClick={openInterestedForm}
+                  style={{
+                    display: 'inline-block',
+                    background: 'white',
+                    color: '#1a1a2e',
+                    padding: '16px 32px',
+                    borderRadius: 30,
+                    fontWeight: 'bold',
+                    fontSize: 17,
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  I&apos;m Interested
+                </button>
               </div>
             </div>
             {/* Full Disclosures */}

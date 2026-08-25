@@ -20,7 +20,8 @@ const supaFetch = (path, options = {}) => {
 
 export default function AdminPage() {
   const [deals, setDeals] = useState([]);
-  const [views, setViews] = useState({});
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsError, setAnalyticsError] = useState('');
   const [loading, setLoading] = useState(true);
   const [editingDeal, setEditingDeal] = useState(null);
   const [editData, setEditData] = useState({});
@@ -29,6 +30,9 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('deals');
   const [viewDetails, setViewDetails] = useState(null);
   const [viewDetailData, setViewDetailData] = useState([]);
+  const [viewDetailAnalytics, setViewDetailAnalytics] = useState(null);
+  const [engagementEvents, setEngagementEvents] = useState([]);
+  const [viewDetailError, setViewDetailError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [emailHTML, setEmailHTML] = useState('');
   const [dealLeads, setDealLeads] = useState([]);
@@ -43,18 +47,20 @@ export default function AdminPage() {
         const data = await res.json();
         setDeals(data || []);
         
-        // Fetch view counts for all deals
-        const viewRes = await supaFetch('/rest/v1/deal_views?select=deal_slug');
-        const viewData = await viewRes.json();
-        if (viewData && !viewData.error) {
-          const counts = {};
-          viewData.forEach(v => {
-            counts[v.deal_slug] = (counts[v.deal_slug] || 0) + 1;
-          });
-          setViews(counts);
-        }
       } catch (err) {
         console.error('Error loading deals:', err);
+      }
+
+      try {
+        const analyticsRes = await fetch('/api/analytics', { cache: 'no-store' });
+        const analyticsData = await analyticsRes.json();
+        if (!analyticsRes.ok) throw new Error(analyticsData.error || 'Analytics request failed.');
+        setAnalytics(analyticsData);
+        setAnalyticsError('');
+      } catch (err) {
+        console.error('Error loading analytics:', err);
+        setAnalytics(null);
+        setAnalyticsError('Analytics are unavailable. Counts are hidden instead of showing an incorrect zero.');
       }
       setLoading(false);
     };
@@ -64,13 +70,23 @@ export default function AdminPage() {
   // Fetch detailed views for a specific deal
   const loadViewDetails = async (slug) => {
     setViewDetails(slug);
+    setViewDetailData([]);
+    setEngagementEvents([]);
+    setViewDetailAnalytics(null);
+    setViewDetailError('');
     try {
-      const res = await supaFetch(`/rest/v1/deal_views?deal_slug=eq.${slug}&select=*&order=viewed_at.desc&limit=100`);
+      const res = await fetch(`/api/analytics?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
       const data = await res.json();
-      setViewDetailData(data || []);
+      if (!res.ok) throw new Error(data.error || 'Analytics request failed.');
+      setViewDetailData(data.pageViews || []);
+      setEngagementEvents(data.events || []);
+      setViewDetailAnalytics(data.deal || null);
     } catch (err) {
       console.error('Error loading view details:', err);
       setViewDetailData([]);
+      setEngagementEvents([]);
+      setViewDetailAnalytics(null);
+      setViewDetailError('Analytics are unavailable for this deal. No totals have been guessed.');
     }
     // Also fetch leads
     try {
@@ -335,11 +351,6 @@ export default function AdminPage() {
     });
   };
 
-  const getUniqueVisitors = (viewsArr) => {
-    const ids = new Set(viewsArr.map(v => v.visitor_id).filter(Boolean));
-    return ids.size;
-  };
-
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
@@ -368,21 +379,37 @@ export default function AdminPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 25, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
             <h2 style={{ margin: '0 0 5px', color: '#1a1a2e' }}>{dealInfo?.data?.address || viewDetails}</h2>
             <p style={{ color: '#888', margin: 0, fontSize: 14 }}>deals.offmarketdaily.com/d/{viewDetails}</p>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 15, marginTop: 20 }}>
+
+            {viewDetailError && (
+              <div style={{ marginTop: 18, padding: 14, borderRadius: 8, background: '#fff4e5', color: '#8a5a00', fontSize: 13, fontWeight: 600 }}>
+                {viewDetailError}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: 15, marginTop: 20 }}>
               <div style={{ background: '#f0faf7', padding: 20, borderRadius: 10, textAlign: 'center' }}>
-                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#00b894' }}>{viewDetailData.length}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>Total Views</div>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#00b894' }}>{viewDetailAnalytics?.views ?? '—'}</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Page Views</div>
               </div>
               <div style={{ background: '#f0faf7', padding: 20, borderRadius: 10, textAlign: 'center' }}>
-                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#00b894' }}>{getUniqueVisitors(viewDetailData)}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>Unique Visitors</div>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#00b894' }}>{viewDetailAnalytics?.uniqueVisitors ?? '—'}</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Est. Visitors</div>
               </div>
               <div style={{ background: '#f0faf7', padding: 20, borderRadius: 10, textAlign: 'center' }}>
-                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#00b894' }}>
-                  {viewDetailData.length > 0 ? (viewDetailData.length / Math.max(getUniqueVisitors(viewDetailData), 1)).toFixed(1) : '0'}
-                </div>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#00b894' }}>{viewDetailAnalytics?.viewsPerVisitor ?? '—'}</div>
                 <div style={{ color: '#666', fontSize: 13 }}>Views Per Visitor</div>
+              </div>
+              <div style={{ background: '#eef6ff', padding: 20, borderRadius: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#2878c8' }}>{viewDetailAnalytics?.callClicks ?? '—'}</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Call Clicks</div>
+              </div>
+              <div style={{ background: '#eef6ff', padding: 20, borderRadius: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#2878c8' }}>{viewDetailAnalytics?.textClicks ?? '—'}</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Text Clicks</div>
+              </div>
+              <div style={{ background: '#fff4ec', padding: 20, borderRadius: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#d65f25' }}>{viewDetailAnalytics?.interestedClicks ?? '—'}</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Interested Clicks</div>
               </div>
             </div>
           </div>
@@ -458,10 +485,44 @@ export default function AdminPage() {
             );
           })()}
           
-          {/* All views log */}
+          {/* Buyer engagement log */}
+          <div style={{ background: 'white', borderRadius: 12, padding: 25, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+            <h3 style={{ margin: '0 0 5px', color: '#1a1a2e' }}>Buyer Engagement</h3>
+            <p style={{ color: '#888', fontSize: 13, margin: '0 0 15px' }}>Every Call, Text, and I&apos;m Interested click from this deal page.</p>
+            <div style={{ overflowX: 'auto', maxHeight: 420, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #eee' }}>
+                    <th style={{ textAlign: 'left', padding: '10px 8px', color: '#888', fontWeight: 600 }}>When</th>
+                    <th style={{ textAlign: 'left', padding: '10px 8px', color: '#888', fontWeight: 600 }}>Action</th>
+                    <th style={{ textAlign: 'left', padding: '10px 8px', color: '#888', fontWeight: 600 }}>Visitor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {engagementEvents.map((event, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                      <td style={{ padding: '10px 8px', color: '#333' }}>{formatDate(event.viewed_at)}</td>
+                      <td style={{ padding: '10px 8px', color: '#1a1a2e', fontWeight: 700 }}>
+                        {event.eventType === 'call' ? 'Call' : event.eventType === 'text' ? 'Text' : 'I\'m Interested'}
+                      </td>
+                      <td style={{ padding: '10px 8px', color: '#333', fontFamily: 'monospace', fontSize: 11 }}>{(event.visitor_id || 'unknown').substring(0, 16)}</td>
+                    </tr>
+                  ))}
+                  {engagementEvents.length === 0 && (
+                    <tr>
+                      <td colSpan={3} style={{ padding: 20, textAlign: 'center', color: '#888' }}>No tracked buyer clicks yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Complete page-view log */}
           <div style={{ background: 'white', borderRadius: 12, padding: 25, boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-            <h3 style={{ margin: '0 0 15px', color: '#1a1a2e' }}>Recent Views (Last 100)</h3>
-            <div style={{ overflowX: 'auto' }}>
+            <h3 style={{ margin: '0 0 5px', color: '#1a1a2e' }}>Recorded Page Views</h3>
+            <p style={{ color: '#888', fontSize: 13, margin: '0 0 15px' }}>This list is fully paginated and is no longer capped at 100 rows.</p>
+            <div style={{ overflowX: 'auto', maxHeight: 520, overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #eee' }}>
@@ -769,22 +830,34 @@ export default function AdminPage() {
       
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: 20 }}>
         {/* Stats bar */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 15, marginBottom: 25 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 15, marginBottom: 15 }}>
           <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
             <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{deals.length}</div>
             <div style={{ color: '#888', fontSize: 13 }}>Total Deals</div>
           </div>
           <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#00b894' }}>{Object.values(views).reduce((a, b) => a + b, 0)}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Total Views</div>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#00b894' }}>{analytics?.totals?.views ?? '—'}</div>
+            <div style={{ color: '#888', fontSize: 13 }}>Page Views</div>
           </div>
           <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#e17055' }}>
-              {deals.length > 0 ? Math.round(Object.values(views).reduce((a, b) => a + b, 0) / deals.length) : 0}
-            </div>
-            <div style={{ color: '#888', fontSize: 13 }}>Avg Views/Deal</div>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#2878c8' }}>{analytics?.totals?.callClicks ?? '—'}</div>
+            <div style={{ color: '#888', fontSize: 13 }}>Call Clicks</div>
+          </div>
+          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#2878c8' }}>{analytics?.totals?.textClicks ?? '—'}</div>
+            <div style={{ color: '#888', fontSize: 13 }}>Text Clicks</div>
+          </div>
+          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#d65f25' }}>{analytics?.totals?.interestedClicks ?? '—'}</div>
+            <div style={{ color: '#888', fontSize: 13 }}>Interested Clicks</div>
           </div>
         </div>
+
+        {analyticsError && (
+          <div style={{ marginBottom: 20, padding: 14, borderRadius: 8, background: '#fff4e5', color: '#8a5a00', fontSize: 13, fontWeight: 600 }}>
+            {analyticsError}
+          </div>
+        )}
         
         {/* Tab Bar */}
         <div style={{ display: 'flex', gap: 0, marginBottom: 20, background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
@@ -816,6 +889,7 @@ export default function AdminPage() {
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>PRICE</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>MARKET</th>
                   <th style={{ textAlign: 'center', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>VIEWS</th>
+                  <th style={{ textAlign: 'center', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 12 }}>CALL / TEXT / INTERESTED</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>CREATED</th>
                   <th style={{ textAlign: 'right', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>ACTIONS</th>
                 </tr>
@@ -845,8 +919,8 @@ export default function AdminPage() {
                         <span
                           onClick={() => loadViewDetails(deal.slug)}
                           style={{
-                            background: views[deal.slug] ? '#e8f5e9' : '#f5f5f5',
-                            color: views[deal.slug] ? '#00b894' : '#999',
+                            background: analytics?.byDeal?.[deal.slug]?.views ? '#e8f5e9' : '#f5f5f5',
+                            color: analytics?.byDeal?.[deal.slug]?.views ? '#00b894' : '#999',
                             padding: '4px 12px',
                             borderRadius: 12,
                             fontWeight: 700,
@@ -854,8 +928,22 @@ export default function AdminPage() {
                             cursor: 'pointer'
                           }}
                         >
-                          {views[deal.slug] || 0}
+                          {analytics ? (analytics.byDeal?.[deal.slug]?.views || 0) : '—'}
                         </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                      {isTrackingOnlyDeal(deal.data) ? (
+                        <span style={{ color: '#aaa', fontWeight: 600 }}>—</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => loadViewDetails(deal.slug)}
+                          title="Call / Text / Interested"
+                          style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap', padding: 4 }}
+                        >
+                          {analytics ? `${analytics.byDeal?.[deal.slug]?.callClicks || 0} / ${analytics.byDeal?.[deal.slug]?.textClicks || 0} / ${analytics.byDeal?.[deal.slug]?.interestedClicks || 0}` : '—'}
+                        </button>
                       )}
                     </td>
                     <td style={{ padding: '14px 16px', color: '#888', fontSize: 13 }}>
