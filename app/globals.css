@@ -20,7 +20,7 @@ body {
   padding-top: 30px !important;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .deal-price-banner {
     padding: 24px 20px !important;
   }
