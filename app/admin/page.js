@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { isTrackingOnlyDeal } from '../../lib/dealRecord.mjs';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
@@ -501,7 +502,9 @@ export default function AdminPage() {
             <span style={{ fontWeight: 700, fontSize: 18 }}>Edit Deal</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <a href={`/d/${editingDeal.slug}`} target="_blank" style={{ color: '#00b894', fontSize: 13, textDecoration: 'none' }}>View Live →</a>
+            {!isTrackingOnlyDeal(editingDeal.data) && (
+              <a href={`/d/${editingDeal.slug}`} target="_blank" style={{ color: '#00b894', fontSize: 13, textDecoration: 'none' }}>View Live →</a>
+            )}
             <button 
               onClick={saveDeal} 
               disabled={saving}
@@ -522,7 +525,11 @@ export default function AdminPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 25, boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
             <div style={{ marginBottom: 15, padding: 12, background: '#f0faf7', borderRadius: 8, fontSize: 13, color: '#666' }}>
               <strong>Deal #:</strong> {editingDeal.id}<br />
-              <strong>URL:</strong> deals.offmarketdaily.com/d/{editingDeal.slug} — <em>Editing will NOT change this link</em>
+              {isTrackingOnlyDeal(editingDeal.data) ? (
+                <><strong>Status:</strong> Tracking only — no public page or buyer link</>
+              ) : (
+                <><strong>URL:</strong> deals.offmarketdaily.com/d/{editingDeal.slug} — <em>Editing will NOT change this link</em></>
+              )}
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
@@ -821,7 +828,9 @@ export default function AdminPage() {
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>{deal.data?.address || 'No address'}</div>
-                      <div style={{ color: '#aaa', fontSize: 12 }}>{deal.slug}</div>
+                      <div style={{ color: '#aaa', fontSize: 12 }}>
+                        {isTrackingOnlyDeal(deal.data) ? 'Tracking only • no public page' : deal.slug}
+                      </div>
                     </td>
                     <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1a1a2e' }}>
                       ${deal.data?.askingPrice ? Number(deal.data.askingPrice).toLocaleString() : '—'}
@@ -830,49 +839,57 @@ export default function AdminPage() {
                       {deal.data?.city}, {deal.data?.state}
                     </td>
                     <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                      <span 
-                        onClick={() => loadViewDetails(deal.slug)}
-                        style={{ 
-                          background: views[deal.slug] ? '#e8f5e9' : '#f5f5f5', 
-                          color: views[deal.slug] ? '#00b894' : '#999',
-                          padding: '4px 12px', 
-                          borderRadius: 12, 
-                          fontWeight: 700, 
-                          fontSize: 14,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {views[deal.slug] || 0}
-                      </span>
+                      {isTrackingOnlyDeal(deal.data) ? (
+                        <span style={{ color: '#aaa', fontWeight: 600 }}>—</span>
+                      ) : (
+                        <span
+                          onClick={() => loadViewDetails(deal.slug)}
+                          style={{
+                            background: views[deal.slug] ? '#e8f5e9' : '#f5f5f5',
+                            color: views[deal.slug] ? '#00b894' : '#999',
+                            padding: '4px 12px',
+                            borderRadius: 12,
+                            fontWeight: 700,
+                            fontSize: 14,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {views[deal.slug] || 0}
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: '14px 16px', color: '#888', fontSize: 13 }}>
                       {formatDate(deal.created_at)}
                     </td>
                     <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <a
-                          href={`/d/${deal.slug}`}
-                          target="_blank"
-                          style={{ padding: '6px 14px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, color: '#666', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}
-                        >
-                          View
-                        </a>
+                        {!isTrackingOnlyDeal(deal.data) && (
+                          <a
+                            href={`/d/${deal.slug}`}
+                            target="_blank"
+                            style={{ padding: '6px 14px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, color: '#666', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}
+                          >
+                            View
+                          </a>
+                        )}
                         <button
                           onClick={() => startEditing(deal)}
                           style={{ padding: '6px 14px', background: '#1a1a2e', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                         >
                           Edit
                         </button>
-                        <button
-                          onClick={() => {
-                            const url = `https://deals.offmarketdaily.com/d/${deal.slug}`;
-                            navigator.clipboard.writeText(url);
-                            alert('Link copied!');
-                          }}
-                          style={{ padding: '6px 14px', background: '#00b894', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                        >
-                          Copy Link
-                        </button>
+                        {!isTrackingOnlyDeal(deal.data) && (
+                          <button
+                            onClick={() => {
+                              const url = `https://deals.offmarketdaily.com/d/${deal.slug}`;
+                              navigator.clipboard.writeText(url);
+                              alert('Link copied!');
+                            }}
+                            style={{ padding: '6px 14px', background: '#00b894', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                          >
+                            Copy Link
+                          </button>
+                        )}
                         <button
                           onClick={() => setDeleteConfirm(deal)}
                           style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}

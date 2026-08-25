@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
 import { EMPTY_DEAL, extractTextBlastPhotoLink, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
+import { buildPublishedDealRecord, buildTrackingOnlyDealRecord } from '../lib/dealRecord.mjs';
 import { buildTextBlast } from '../lib/textBlast.mjs';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
@@ -58,6 +59,8 @@ export default function OMDGenerator() {
   const [dealUrl, setDealUrl] = useState('');
   const [dealNumber, setDealNumber] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [creatingDealNumber, setCreatingDealNumber] = useState(false);
+  const [dealNumberNotice, setDealNumberNotice] = useState(null);
   const [uploadProgress, setUploadProgress] = useState('');
   const [buyerTeaser, setBuyerTeaser] = useState('');
   const [textBlastPhotoLink, setTextBlastPhotoLink] = useState('');
@@ -90,6 +93,7 @@ export default function OMDGenerator() {
     setFormData(data);
     setDealUrl('');
     setDealNumber('');
+    setDealNumberNotice(null);
     setFacebookVariantOffset(0);
     setTextBlastPhotoLink(extractTextBlastPhotoLink(rawInput));
     setPolishNotice('');
@@ -203,19 +207,16 @@ export default function OMDGenerator() {
     setPublishing(true);
     setDealNumber('');
     try {
-      const slug = formData.address
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .substring(0, 30) + '-' + Math.random().toString(36).substring(2, 6);
+      const pendingRecord = buildPublishedDealRecord({ formData, photos: [] });
+      const slug = pendingRecord.slug;
       
       const uploadedPhotos = await uploadPhotosToSupabase(slug);
       
-      const dealData = {
-        ...formData,
-        photos: uploadedPhotos
-      };
+      const dealData = buildPublishedDealRecord({
+        formData,
+        photos: uploadedPhotos,
+        suffix: slug.split('-').pop()
+      }).data;
       
       const response = await fetch(`${SUPABASE_URL}/rest/v1/deals`, {
         method: 'POST',
@@ -247,6 +248,49 @@ export default function OMDGenerator() {
       alert('Error publishing deal');
     }
     setPublishing(false);
+  };
+
+  const createDealNumberOnly = async () => {
+    setCreatingDealNumber(true);
+    setDealNumber('');
+    setDealUrl('');
+    setDealNumberNotice(null);
+
+    try {
+      const record = buildTrackingOnlyDealRecord({ formData });
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/deals`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(record)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'The deal number could not be created.');
+      }
+
+      const savedDeals = await response.json();
+      const savedDeal = savedDeals?.[0];
+      if (!savedDeal?.id) throw new Error('The CRM tracking number was not returned.');
+
+      setDealNumber(String(savedDeal.id));
+      setDealNumberNotice({
+        type: 'success',
+        text: `Deal #${savedDeal.id} created for CRM tracking. No public deal page or buyer link was created.`
+      });
+    } catch (error) {
+      setDealNumberNotice({
+        type: 'error',
+        text: error.message || 'The deal number could not be created.'
+      });
+    }
+
+    setCreatingDealNumber(false);
   };
 
   const formatPrice = (num) => {
@@ -596,6 +640,41 @@ export default function OMDGenerator() {
               <button onClick={() => setPreviewMode('facebook')} style={{ flex: 1, background: '#1877f2', color: 'white', border: 'none', padding: 15, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 16 }}>
                 Facebook Post →
               </button>
+            </div>
+
+            <div style={{ marginTop: 20, padding: 16, border: '1px solid #d8dee8', borderRadius: 10, background: '#f8fafc' }}>
+              <div style={{ fontWeight: 700, color: '#1a1a2e', marginBottom: 5 }}>Need the CRM deal number without marketing the property?</div>
+              <p style={{ color: '#667085', fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>
+                Enter the address above, then create the tracking number. This does not upload photos, publish a buyer page, or create a shareable deal link.
+              </p>
+              <button
+                onClick={createDealNumberOnly}
+                disabled={creatingDealNumber || !formData.address.trim()}
+                style={{
+                  background: creatingDealNumber || !formData.address.trim() ? '#c8ced8' : '#1a1a2e',
+                  color: 'white',
+                  border: 'none',
+                  padding: '11px 18px',
+                  borderRadius: 8,
+                  cursor: creatingDealNumber || !formData.address.trim() ? 'default' : 'pointer',
+                  fontWeight: 700
+                }}
+              >
+                {creatingDealNumber ? 'Creating Deal #...' : 'Create Deal # Only'}
+              </button>
+              {dealNumberNotice && (
+                <div style={{
+                  marginTop: 12,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  background: dealNumberNotice.type === 'success' ? '#e8f7f2' : '#ffebee',
+                  color: dealNumberNotice.type === 'success' ? '#116149' : '#b42318',
+                  fontSize: 13,
+                  fontWeight: 600
+                }}>
+                  {dealNumberNotice.text}
+                </div>
+              )}
             </div>
           </div>
         </div>

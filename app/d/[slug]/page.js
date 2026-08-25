@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { isPublicDeal } from '../../../lib/dealRecord.mjs';
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
 const HouseIcon = () => (
@@ -48,7 +49,8 @@ export default function DealPage() {
           { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }}
         );
         const data = await response.json();
-        if (data?.[0]) setDeal(data[0].data);
+        const dealData = data?.[0]?.data;
+        if (isPublicDeal(dealData)) setDeal(dealData);
       } catch (err) {
         console.error('Error fetching deal:', err);
       }
@@ -59,7 +61,7 @@ export default function DealPage() {
 
   // === VIEW TRACKING (NEW) — fires once on page load, fails silently ===
   useEffect(() => {
-    if (!params.slug) return;
+    if (!params.slug || !deal) return;
     // Preview and local QA must never pollute production analytics.
     if (typeof window !== 'undefined' && window.location.hostname !== 'deals.offmarketdaily.com') return;
     try {
@@ -92,7 +94,7 @@ export default function DealPage() {
     } catch (e) {
       // Tracking should NEVER break the deal page
     }
-  }, [params.slug]);
+  }, [params.slug, deal]);
   // === END VIEW TRACKING ===
 
   // === LEAD CAPTURE POPUP ===
@@ -101,7 +103,7 @@ export default function DealPage() {
   const [leadSubmitted, setLeadSubmitted] = useState(false);
 
   useEffect(() => {
-    if (!params.slug) return;
+    if (!params.slug || !deal) return;
     // Keep preview deployments read-only and prevent accidental test leads.
     if (typeof window !== 'undefined' && window.location.hostname !== 'deals.offmarketdaily.com') return;
     // Check if already submitted or dismissed
@@ -145,7 +147,7 @@ export default function DealPage() {
       clearTimeout(timer);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [params.slug]);
+  }, [params.slug, deal]);
 
   const submitLead = async () => {
     if (!leadForm.name && !leadForm.email) return;
