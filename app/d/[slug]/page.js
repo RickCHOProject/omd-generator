@@ -522,8 +522,6 @@ export default function DealPage() {
           {/* Details Section */}
           <div className="deal-details" style={{
             width: '100%',
-            maxWidth: 1200,
-            margin: '0 auto',
             padding: 'clamp(20px, 5vw, 40px)'
           }}>
             
