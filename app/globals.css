@@ -19,7 +19,7 @@ body {
 .deal-hero-grid {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(360px, 1fr);
   gap: 4px;
   width: 100%;
   height: clamp(240px, 38vw, 460px);
@@ -55,7 +55,7 @@ body {
   padding-top: 30px !important;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .deal-hero-grid {
     display: block;
     height: 240px;
@@ -69,7 +69,9 @@ body {
   .deal-hero-side {
     display: none;
   }
+}
 
+@media (max-width: 760px) {
   .deal-price-banner {
     padding: 22px 18px !important;
   }
