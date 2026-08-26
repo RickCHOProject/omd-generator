@@ -1,26 +1,10 @@
-import { isPublicDeal } from '../../../lib/dealRecord.mjs';
-
-const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
+import { getPublicDealRecord } from '../../../lib/publicDealServer';
 
 const formatPrice = (value) => value ? Number(value).toLocaleString('en-US') : null;
 
 async function getDeal(slug) {
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/deals?slug=eq.${encodeURIComponent(slug)}&select=data`,
-      {
-        cache: 'no-store',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
-    if (!response.ok) return null;
-    const rows = await response.json();
-    const deal = rows?.[0]?.data || null;
-    return isPublicDeal(deal) ? deal : null;
+    return (await getPublicDealRecord(slug))?.data || null;
   } catch {
     return null;
   }

@@ -5,20 +5,15 @@ import {
   collectPaginatedRows,
   encodeEventReferrer
 } from '../../../lib/analytics.mjs';
+import { getPublicDealRecord } from '../../../lib/publicDealServer';
+import { getRequestIp, publicRateLimit } from '../../../lib/publicRateLimit.mjs';
 import { getStaffSession } from '../../../lib/serverAuth';
+import { supabaseServerFetch } from '../../../lib/supabaseServer';
 
 export const dynamic = 'force-dynamic';
 
-const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
 const PRODUCTION_HOST = 'deals.offmarketdaily.com';
 const PAGE_SIZE = 1000;
-
-const supabaseHeaders = {
-  apikey: SUPABASE_ANON_KEY,
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-  'Content-Type': 'application/json'
-};
 
 const cleanText = (value, maxLength) => typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
 
@@ -31,10 +26,7 @@ const fetchAnalyticsRows = async (slug = '') => collectPaginatedRows(async ({ of
   });
   if (slug) params.set('deal_slug', `eq.${slug}`);
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/deal_views?${params}`, {
-    headers: supabaseHeaders,
-    cache: 'no-store'
-  });
+  const response = await supabaseServerFetch(`/rest/v1/deal_views?${params}`);
   if (!response.ok) throw new Error(`Analytics read failed with status ${response.status}.`);
   return response.json();
 }, PAGE_SIZE);
@@ -69,15 +61,25 @@ export async function POST(request) {
       return NextResponse.json({ error: 'A valid deal and event are required.' }, { status: 400 });
     }
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/deal_views`, {
+    const allowed = publicRateLimit({
+      key: `analytics:${getRequestIp(request)}:${dealSlug}`,
+      limit: 240,
+      windowMs: 5 * 60 * 1000
+    });
+    if (!allowed) return NextResponse.json({ error: 'Please try again later.' }, { status: 429 });
+
+    if (!await getPublicDealRecord(dealSlug)) {
+      return NextResponse.json({ error: 'Deal not found.' }, { status: 404 });
+    }
+
+    const response = await supabaseServerFetch('/rest/v1/deal_views', {
       method: 'POST',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      cache: 'no-store',
+      prefer: 'return=minimal',
       body: JSON.stringify({
         deal_slug: dealSlug,
         visitor_id: cleanText(body.visitorId, 120) || null,
         referrer: eventType === 'view' ? (cleanText(body.referrer, 500) || null) : encodeEventReferrer(eventType),
-        user_agent: cleanText(body.userAgent, 500) || null
+        user_agent: cleanText(request.headers.get('user-agent'), 500) || null
       })
     });
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getStaffSession } from '../../../../lib/serverAuth';
+import { isJpegBytes } from '../../../../lib/imageValidation.mjs';
 import { supabaseServerFetch } from '../../../../lib/supabaseServer';
 
 const SUPABASE_PUBLIC_STORAGE = 'https://wqvfsynpxfwacesvjlmd.supabase.co/storage/v1/object/public/deal-photos';
@@ -17,6 +18,9 @@ export async function POST(request) {
   const image = await request.arrayBuffer();
   if (!image.byteLength || image.byteLength > 12 * 1024 * 1024) {
     return NextResponse.json({ error: 'The photo must be smaller than 12 MB.' }, { status: 400 });
+  }
+  if (!isJpegBytes(image)) {
+    return NextResponse.json({ error: 'The photo must be a valid JPEG image.' }, { status: 400 });
   }
 
   const response = await supabaseServerFetch(`/storage/v1/object/deal-photos/${fileName}`, {

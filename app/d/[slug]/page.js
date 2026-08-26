@@ -1,10 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { isPublicDeal } from '../../../lib/dealRecord.mjs';
 import { removeUnexpectedContactActions } from '../../../lib/contactActions.mjs';
-const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
 const HouseIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -49,12 +46,13 @@ export default function DealPage() {
     const fetchDeal = async () => {
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/deals?slug=eq.${params.slug}&select=*`,
-          { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }}
+          `/api/public/deals/${encodeURIComponent(params.slug)}`,
+          { cache: 'no-store' }
         );
-        const data = await response.json();
-        const dealData = data?.[0]?.data;
-        if (isPublicDeal(dealData)) setDeal(dealData);
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.data) setDeal(data.data);
+        }
       } catch (err) {
         console.error('Error fetching deal:', err);
       }
@@ -171,17 +169,14 @@ export default function DealPage() {
       }
       let visitorId = null;
       try { visitorId = localStorage.getItem('omd_visitor_id'); } catch (e) {}
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/deal_leads`, {
+      const response = await fetch('/api/public/leads', {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          deal_slug: params.slug,
-          visitor_id: visitorId,
+          dealSlug: params.slug,
+          visitorId,
           name: leadForm.name || null,
           email: leadForm.email || null,
           phone: leadForm.phone || null
