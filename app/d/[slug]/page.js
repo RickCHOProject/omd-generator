@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { isPublicDeal } from '../../../lib/dealRecord.mjs';
+import { removeUnexpectedContactActions } from '../../../lib/contactActions.mjs';
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
 const HouseIcon = () => (
@@ -35,6 +36,7 @@ export default function DealPage() {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const trackedViewRef = useRef('');
   const interestedTrackedRef = useRef(false);
+  const contactActionsRef = useRef(null);
 
   // === SWIPE SUPPORT (NEW) ===
   const touchStartX = useRef(0);
@@ -224,6 +226,19 @@ export default function DealPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, galleryOpen, selectedPhotoIndex, deal]);
+
+  // Keep the locked buyer CTA limited to the two approved phone actions,
+  // including when browser software attempts to inject an extra control.
+  useEffect(() => {
+    const container = contactActionsRef.current;
+    if (!container) return;
+    const enforceApprovedActions = () => removeUnexpectedContactActions(container);
+    enforceApprovedActions();
+    const observer = new MutationObserver(enforceApprovedActions);
+    observer.observe(container, { childList: true });
+    return () => observer.disconnect();
+  }, [deal]);
+
   const formatPrice = (num) => num ? Number(num).toLocaleString() : '';
   const navigatePhoto = (direction) => {
     if (!deal?.photos?.length) return;
@@ -618,7 +633,7 @@ export default function DealPage() {
                 margin: '0 0 20px',
                 fontSize: 'clamp(20px, 5vw, 28px)'
               }}>Interested in this deal?</h2>
-              <div style={{
+              <div ref={contactActionsRef} data-omd-contact-actions="approved" style={{
                 display: 'flex',
                 gap: 15,
                 justifyContent: 'center',
@@ -952,7 +967,10 @@ export default function DealPage() {
           </div>
         </div>
       )}
-      <style>{`@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+      <style>{`
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        [data-omd-contact-actions="approved"] > :nth-child(n+3) { display: none !important; }
+      `}</style>
       {/* === END LEAD CAPTURE POPUP === */}
     </>
   );
