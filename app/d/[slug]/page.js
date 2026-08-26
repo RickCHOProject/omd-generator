@@ -321,14 +321,17 @@ export default function DealPage() {
       {/* Main Page */}
       <div style={{
         minHeight: '100vh',
-        background: 'white',
+        background: '#eef1f4',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
-        {/* Full-width listing shell. The hero itself is capped below to preserve photo proportions. */}
+        {/* Keep the approved listing composition together while giving wide screens a little more room. */}
         <div style={{ 
           width: '100%',
+          maxWidth: 1400,
+          margin: '0 auto',
           background: 'white',
-          minHeight: '100vh'
+          minHeight: '100vh',
+          boxShadow: '0 0 40px rgba(26,26,46,0.08)'
         }}>
           
           {/* Header */}
@@ -354,7 +357,7 @@ export default function DealPage() {
           </div>
           {/* Hero Image Section */}
           {heroPhoto && (
-            <div style={{ position: 'relative', background: '#1a1a2e' }}>
+            <div style={{ position: 'relative' }}>
               {/* Main Image - Click to Enlarge, SWIPE to navigate */}
               <div
                 onClick={() => openLightbox(selectedPhotoIndex)}
@@ -362,8 +365,6 @@ export default function DealPage() {
                 style={{
                   position: 'relative',
                   width: '100%',
-                  maxWidth: 1400,
-                  margin: '0 auto',
                   height: 'clamp(240px, 38vw, 460px)',
                   cursor: 'pointer',
                   overflow: 'hidden'
@@ -508,12 +509,7 @@ export default function DealPage() {
             </div>
           </div>
           {/* Details Section */}
-          <div className="deal-details" style={{
-            width: '100%',
-            maxWidth: 1200,
-            margin: '0 auto',
-            padding: 'clamp(20px, 5vw, 40px)'
-          }}>
+          <div className="deal-details" style={{ padding: 'clamp(20px, 5vw, 40px)' }}>
             
             {/* Stats Grid */}
             <div className="deal-stats-grid" style={{
