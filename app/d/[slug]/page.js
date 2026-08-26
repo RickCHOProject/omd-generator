@@ -354,22 +354,7 @@ export default function DealPage() {
           </div>
           {/* Hero Image Section */}
           {heroPhoto && (
-            <div style={{
-              position: 'relative',
-              overflow: 'hidden',
-              background: '#1a1a2e'
-            }}>
-              {/* Extend the selected photo across ultra-wide screens without stretching the primary image. */}
-              <div aria-hidden="true" style={{
-                position: 'absolute',
-                inset: -30,
-                backgroundImage: `linear-gradient(rgba(26,26,46,0.32), rgba(26,26,46,0.32)), url("${heroPhoto.url}")`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                filter: 'blur(24px)',
-                transform: 'scale(1.08)',
-                opacity: 0.72
-              }} />
+            <div style={{ position: 'relative' }}>
               {/* Main Image - Click to Enlarge, SWIPE to navigate */}
               <div
                 onClick={() => openLightbox(selectedPhotoIndex)}
@@ -377,9 +362,7 @@ export default function DealPage() {
                 style={{
                   position: 'relative',
                   width: '100%',
-                  maxWidth: 1400,
-                  margin: '0 auto',
-                  height: 'clamp(240px, 38vw, 460px)',
+                  height: 'clamp(320px, min(56.25vw, 70vh), 760px)',
                   cursor: 'pointer',
                   overflow: 'hidden'
                 }}
@@ -435,7 +418,7 @@ export default function DealPage() {
                 <div className="deal-thumbnail-strip" style={{
                   display: 'flex',
                   gap: 8,
-                  padding: '12px max(20px, calc((100vw - 1400px) / 2 + 20px))',
+                  padding: '12px 20px',
                   background: '#1a1a2e',
                   overflowX: 'auto'
                 }}>
