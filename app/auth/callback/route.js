@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
+import { getEmailFlowNext, getEmailOtpType } from '../../../lib/authEmailFlow.mjs';
 import { createSupabaseAuthClient } from '../../../lib/supabaseAuthServer';
-
-const safeNextPath = (value) => value?.startsWith('/') && !value.startsWith('//')
-  ? value
-  : '/admin';
 
 export async function GET(request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-  const next = safeNextPath(url.searchParams.get('next'));
+  const tokenHash = url.searchParams.get('token_hash');
+  const type = getEmailOtpType(url.searchParams.get('type'));
+  const next = getEmailFlowNext(type, url.searchParams.get('next'));
+
+  if (tokenHash && type) {
+    const supabase = await createSupabaseAuthClient();
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+    if (!error) return NextResponse.redirect(new URL(next, url.origin));
+  }
 
   if (code) {
     const supabase = await createSupabaseAuthClient();
