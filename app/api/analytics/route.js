@@ -9,6 +9,7 @@ import { getPublicDealRecord } from '../../../lib/publicDealServer';
 import { getRequestIp, publicRateLimit } from '../../../lib/publicRateLimit.mjs';
 import { getStaffSession } from '../../../lib/serverAuth';
 import { supabaseServerFetch } from '../../../lib/supabaseServer';
+import { isSameOriginRequest } from '../../../lib/requestSecurity.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
     const requestHost = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '').split(':')[0];
     const body = await request.json();
     const eventType = cleanText(body.eventType, 20);

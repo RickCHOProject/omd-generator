@@ -4,6 +4,7 @@ import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } fr
 import { EMPTY_DEAL, extractTextBlastPhotoLink, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
 import { buildPublishedDealRecord, buildTrackingOnlyDealRecord } from '../lib/dealRecord.mjs';
 import { buildTextBlast } from '../lib/textBlast.mjs';
+import { safeHtmlTemplate } from '../lib/htmlSecurity.mjs';
 
 // House Icon Component
 const HouseIcon = () => (
@@ -299,7 +300,7 @@ export default function OMDGenerator() {
   });
 
   const generateEmailHTML = () => {
-    return `<!DOCTYPE html>
+    return safeHtmlTemplate`<!DOCTYPE html>
 <html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">

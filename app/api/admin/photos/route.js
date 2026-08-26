@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { getStaffSession } from '../../../../lib/serverAuth';
 import { isJpegBytes } from '../../../../lib/imageValidation.mjs';
 import { supabaseServerFetch } from '../../../../lib/supabaseServer';
+import { isSameOriginRequest } from '../../../../lib/requestSecurity.mjs';
 
 const SUPABASE_PUBLIC_STORAGE = 'https://wqvfsynpxfwacesvjlmd.supabase.co/storage/v1/object/public/deal-photos';
 
 export async function POST(request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   if (!await getStaffSession()) {
     return NextResponse.json({ error: 'Staff sign-in required.' }, { status: 401 });
   }

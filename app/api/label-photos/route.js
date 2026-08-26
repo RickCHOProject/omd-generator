@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getStaffSession } from '../../../lib/serverAuth';
+import { isSameOriginRequest } from '../../../lib/requestSecurity.mjs';
 
 export async function POST(request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   if (!await getStaffSession()) {
     return NextResponse.json({ error: 'Staff sign-in required.' }, { status: 401 });
   }

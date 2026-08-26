@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getOwnerSession } from '../../../../lib/serverAuth';
 import { createSupabaseAdminClient } from '../../../../lib/supabaseAuthServer';
 import { DEFAULT_OWNER_EMAIL, formatDisplayName, isFullDisplayName, normalizeEmail, OMD_ROLES } from '../../../../lib/staffAccess.mjs';
+import { isSameOriginRequest } from '../../../../lib/requestSecurity.mjs';
 
 const unauthorized = () => NextResponse.json({ error: 'Owner access is required.' }, { status: 403 });
 
@@ -48,6 +49,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   if (!await getOwnerSession()) return unauthorized();
   const supabase = requireAdminClient();
   if (!supabase) return NextResponse.json({ error: 'Staff management is not configured yet.' }, { status: 503 });
@@ -127,6 +129,7 @@ export async function POST(request) {
 }
 
 export async function PATCH(request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   if (!await getOwnerSession()) return unauthorized();
   const supabase = requireAdminClient();
   if (!supabase) return NextResponse.json({ error: 'Staff management is not configured yet.' }, { status: 503 });

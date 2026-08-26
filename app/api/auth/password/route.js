@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAuthClient } from '../../../../lib/supabaseAuthServer';
 import { DEFAULT_OWNER_EMAIL, getOMDAccess } from '../../../../lib/staffAccess.mjs';
+import { isSameOriginRequest } from '../../../../lib/requestSecurity.mjs';
 
 export async function POST(request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   const { password = '' } = await request.json();
   if (String(password).length < 10) {
     return NextResponse.json({ error: 'Use at least 10 characters.' }, { status: 400 });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { safeNextPath } from '../../lib/authEmailFlow.mjs';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,7 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const requestedPath = new URLSearchParams(window.location.search).get('next');
-    if (requestedPath?.startsWith('/') && !requestedPath.startsWith('//')) setNextPath(requestedPath);
+    setNextPath(safeNextPath(requestedPath));
     const urlError = new URLSearchParams(window.location.search).get('error');
     if (urlError) setError(urlError);
   }, []);

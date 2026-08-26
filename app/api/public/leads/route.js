@@ -3,11 +3,13 @@ import { buildPublicLeadRecord } from '../../../../lib/publicDeal.mjs';
 import { getPublicDealRecord } from '../../../../lib/publicDealServer';
 import { getRequestIp, publicRateLimit } from '../../../../lib/publicRateLimit.mjs';
 import { supabaseServerFetch } from '../../../../lib/supabaseServer';
+import { isSameOriginRequest } from '../../../../lib/requestSecurity.mjs';
 
 const PRODUCTION_HOST = 'deals.offmarketdaily.com';
 
 export async function POST(request) {
   try {
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
     const requestHost = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '').split(':')[0];
     if (requestHost !== PRODUCTION_HOST) {
       return NextResponse.json({ submitted: false, skipped: 'non-production' });

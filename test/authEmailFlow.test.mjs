@@ -20,4 +20,7 @@ test('redirects stay on OMD and reject protocol-relative paths', () => {
   assert.equal(safeNextPath('/admin'), '/admin');
   assert.equal(safeNextPath('//outside.example', '/login'), '/login');
   assert.equal(safeNextPath('https://outside.example', '/login'), '/login');
+  assert.equal(safeNextPath('/\\outside.example', '/login'), '/login');
+  assert.equal(safeNextPath('/%2foutside.example', '/login'), '/login');
+  assert.equal(safeNextPath('/admin%0d%0aLocation:evil', '/login'), '/login');
 });

@@ -3,6 +3,7 @@ import { getStaffSession } from '../../../../lib/serverAuth';
 import { supabaseServerFetch } from '../../../../lib/supabaseServer';
 import { auditNewDealData, auditUpdatedDealData } from '../../../../lib/dealAudit.mjs';
 import { isOwner } from '../../../../lib/staffAccess.mjs';
+import { isSameOriginRequest } from '../../../../lib/requestSecurity.mjs';
 
 const unauthorized = () => NextResponse.json({ error: 'Staff sign-in required.' }, { status: 401 });
 
@@ -18,6 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   const session = await getStaffSession();
   if (!session) return unauthorized();
   const { slug, data } = await request.json();
@@ -35,6 +37,7 @@ export async function POST(request) {
 }
 
 export async function PATCH(request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   const session = await getStaffSession();
   if (!session) return unauthorized();
   const { id, data } = await request.json();
@@ -70,6 +73,7 @@ export async function PATCH(request) {
 }
 
 export async function DELETE(request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   const session = await getStaffSession();
   if (!session) return unauthorized();
   if (!isOwner(session)) {

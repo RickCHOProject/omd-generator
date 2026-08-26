@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { isArchivedDeal, isTrackingOnlyDeal } from '../../lib/dealRecord.mjs';
 import { getPublicDealUrl } from '../../lib/dealLinks.mjs';
+import { safeHtmlTemplate } from '../../lib/htmlSecurity.mjs';
 import SignOutButton from '../../components/SignOutButton';
 import TeamAccess from '../../components/TeamAccess';
 import styles from './admin.module.css';
@@ -217,7 +218,7 @@ export default function AdminPage() {
   const generateEmailHTML = (data, slug) => {
     const spread = (Number(data.arv) || 0) - (Number(data.askingPrice) || 0);
     const dealLink = getPublicDealUrl(slug);
-    return `<!DOCTYPE html>
+    return safeHtmlTemplate`<!DOCTYPE html>
 <html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
@@ -599,7 +600,7 @@ export default function AdminPage() {
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {!isTrackingOnlyDeal(editingDeal.data) && (
-              <a href={getPublicDealUrl(editingDeal.slug)} target="_blank" style={{ color: '#00b894', fontSize: 13, textDecoration: 'none' }}>View Live →</a>
+              <a href={getPublicDealUrl(editingDeal.slug)} target="_blank" rel="noopener noreferrer" style={{ color: '#00b894', fontSize: 13, textDecoration: 'none' }}>View Live →</a>
             )}
             <button 
               onClick={saveDeal} 
@@ -1051,6 +1052,7 @@ export default function AdminPage() {
                           <a
                             href={getPublicDealUrl(deal.slug)}
                             target="_blank"
+                            rel="noopener noreferrer"
                             style={{ padding: '6px 14px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, color: '#666', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}
                           >
                             View
@@ -1122,7 +1124,7 @@ export default function AdminPage() {
                   <div className={styles.mobileActions}>
                     {!trackingOnly && !isArchivedDeal(deal.data) && <button type="button" onClick={() => loadViewDetails(deal.slug)} className={styles.mobileAction}>Analytics</button>}
                     <button type="button" onClick={() => startEditing(deal)} className={styles.mobileActionPrimary}>Edit</button>
-                    {!trackingOnly && !isArchivedDeal(deal.data) && <a href={getPublicDealUrl(deal.slug)} target="_blank" className={styles.mobileAction}>View page</a>}
+                    {!trackingOnly && !isArchivedDeal(deal.data) && <a href={getPublicDealUrl(deal.slug)} target="_blank" rel="noopener noreferrer" className={styles.mobileAction}>View page</a>}
                     {!trackingOnly && !isArchivedDeal(deal.data) && (
                       <button type="button" onClick={() => { navigator.clipboard.writeText(getPublicDealUrl(deal.slug)); alert('Link copied!'); }} className={styles.mobileAction}>
                         Copy link
