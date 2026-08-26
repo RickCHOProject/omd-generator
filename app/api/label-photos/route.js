@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
+import { getStaffSession } from '../../../lib/serverAuth';
 
 export async function POST(request) {
+  if (!await getStaffSession()) {
+    return NextResponse.json({ error: 'Staff sign-in required.' }, { status: 401 });
+  }
   try {
     const body = await request.json();
     

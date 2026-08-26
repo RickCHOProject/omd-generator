@@ -6,6 +6,7 @@ import {
   buildTrackingOnlyDealRecord,
   createDealSlug,
   DEAL_STATUS,
+  isArchivedDeal,
   isPublicDeal,
   isTrackingOnlyDeal
 } from '../lib/dealRecord.mjs';
@@ -61,4 +62,15 @@ test('legacy records without a status remain public', () => {
   assert.equal(isPublicDeal({ address: 'Existing Deal' }), true);
   assert.equal(isPublicDeal(null), false);
   assert.equal(createDealSlug('', 'safe'), 'deal-safe');
+});
+
+test('archived deals are retained internally but no longer public', () => {
+  const data = {
+    address: 'Archived Deal',
+    omdStatus: DEAL_STATUS.PUBLISHED,
+    audit: { archived: true }
+  };
+
+  assert.equal(isArchivedDeal(data), true);
+  assert.equal(isPublicDeal(data), false);
 });

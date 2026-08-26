@@ -5,6 +5,7 @@ import {
   collectPaginatedRows,
   encodeEventReferrer
 } from '../../../lib/analytics.mjs';
+import { getStaffSession } from '../../../lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,9 @@ const fetchAnalyticsRows = async (slug = '') => collectPaginatedRows(async ({ of
 }, PAGE_SIZE);
 
 export async function GET(request) {
+  if (!await getStaffSession()) {
+    return NextResponse.json({ error: 'Staff sign-in required.' }, { status: 401 });
+  }
   try {
     const slug = cleanText(new URL(request.url).searchParams.get('slug'), 160);
     const rows = await fetchAnalyticsRows(slug);

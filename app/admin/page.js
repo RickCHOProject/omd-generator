@@ -1,22 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { isTrackingOnlyDeal } from '../../lib/dealRecord.mjs';
-
-const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
-
-const supaFetch = (path, options = {}) => {
-  return fetch(`${SUPABASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': options.prefer || 'return=representation',
-      ...(options.headers || {})
-    }
-  });
-};
+import { isArchivedDeal, isTrackingOnlyDeal } from '../../lib/dealRecord.mjs';
+import SignOutButton from '../../components/SignOutButton';
+import TeamAccess from '../../components/TeamAccess';
+import styles from './admin.module.css';
 
 export default function AdminPage() {
   const [deals, setDeals] = useState([]);
@@ -33,18 +20,22 @@ export default function AdminPage() {
   const [viewDetailAnalytics, setViewDetailAnalytics] = useState(null);
   const [engagementEvents, setEngagementEvents] = useState([]);
   const [viewDetailError, setViewDetailError] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [emailHTML, setEmailHTML] = useState('');
   const [dealLeads, setDealLeads] = useState([]);
+  const [leadSummary, setLeadSummary] = useState(null);
   const [buyerSignups, setBuyerSignups] = useState([]);
   const [loadingSignups, setLoadingSignups] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dealFilter, setDealFilter] = useState('all');
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Fetch all deals
   useEffect(() => {
     const loadDeals = async () => {
       try {
-        const res = await supaFetch('/rest/v1/deals?select=*&order=created_at.desc');
+        const res = await fetch('/api/admin/deals', { cache: 'no-store' });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Deal request failed.');
         setDeals(data || []);
         
       } catch (err) {
@@ -62,9 +53,23 @@ export default function AdminPage() {
         setAnalytics(null);
         setAnalyticsError('Analytics are unavailable. Counts are hidden instead of showing an incorrect zero.');
       }
+
+      try {
+        const leadsRes = await fetch('/api/admin/leads', { cache: 'no-store' });
+        const leadsData = await leadsRes.json();
+        if (!leadsRes.ok) throw new Error(leadsData.error || 'Lead summary request failed.');
+        setLeadSummary(leadsData);
+      } catch (err) {
+        console.error('Error loading lead summary:', err);
+        setLeadSummary(null);
+      }
       setLoading(false);
     };
     loadDeals();
+    fetch('/api/auth/session', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then(setCurrentUser)
+      .catch(() => {});
   }, []);
 
   // Fetch detailed views for a specific deal
@@ -72,6 +77,7 @@ export default function AdminPage() {
     setViewDetails(slug);
     setViewDetailData([]);
     setEngagementEvents([]);
+    setDealLeads([]);
     setViewDetailAnalytics(null);
     setViewDetailError('');
     try {
@@ -90,8 +96,9 @@ export default function AdminPage() {
     }
     // Also fetch leads
     try {
-      const res = await supaFetch(`/rest/v1/deal_leads?deal_slug=eq.${slug}&select=*&order=created_at.desc`);
+      const res = await fetch(`/api/admin/leads?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Lead request failed.');
       setDealLeads(data || []);
     } catch (err) {
       setDealLeads([]);
@@ -102,8 +109,9 @@ export default function AdminPage() {
   const loadSignups = async () => {
     setLoadingSignups(true);
     try {
-      const res = await supaFetch('/rest/v1/buyer_signups?select=*&order=created_at.desc');
+      const res = await fetch('/api/admin/buyers', { cache: 'no-store' });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Buyer request failed.');
       setBuyerSignups(data || []);
     } catch (err) {
       console.error('Error loading signups:', err);
@@ -149,22 +157,21 @@ export default function AdminPage() {
     setSaving(true);
     setSaveMsg('');
     try {
-      const res = await supaFetch(`/rest/v1/deals?id=eq.${editingDeal.id}`, {
+      const res = await fetch('/api/admin/deals', {
         method: 'PATCH',
-        prefer: 'return=representation',
-        body: JSON.stringify({ 
-          data: editData,
-          updated_at: new Date().toISOString()
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingDeal.id, data: editData })
       });
       const result = await res.json();
       if (res.ok) {
+        const savedData = result?.[0]?.data || editData;
         setSaveMsg('✅ Deal updated! Same URL, new content.');
         // Update local state
         setDeals(prev => prev.map(d => 
-          d.id === editingDeal.id ? { ...d, data: editData } : d
+          d.id === editingDeal.id ? { ...d, data: savedData } : d
         ));
-        setEditingDeal(prev => ({ ...prev, data: editData }));
+        setEditingDeal(prev => ({ ...prev, data: savedData }));
+        setEditData(savedData);
       } else {
         setSaveMsg('❌ Error saving: ' + (result.message || 'Unknown error'));
       }
@@ -174,17 +181,30 @@ export default function AdminPage() {
     setSaving(false);
   };
 
-  const deleteDeal = async (id) => {
+  const setDealArchived = async (deal, archived) => {
+    setSaving(true);
     try {
-      const res = await supaFetch(`/rest/v1/deals?id=eq.${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setDeals(prev => prev.filter(d => d.id !== id));
-        setDeleteConfirm(null);
-      } else {
-        alert('Error deleting deal');
-      }
-    } catch (err) {
-      alert('Error: ' + err.message);
+      const nextData = {
+        ...deal.data,
+        audit: {
+          ...(deal.data?.audit || {}),
+          archived,
+          archivedAt: archived ? new Date().toISOString() : null,
+          archivedBy: archived ? (currentUser?.displayName || currentUser?.email || 'Owner') : null
+        }
+      };
+      const response = await fetch('/api/admin/deals', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: deal.id, data: nextData })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'The deal could not be updated.');
+      setDeals((current) => current.map((item) => item.id === deal.id ? { ...item, data: result[0].data } : item));
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -351,6 +371,20 @@ export default function AdminPage() {
     });
   };
 
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const visibleDeals = deals.filter((deal) => {
+    const trackingOnly = isTrackingOnlyDeal(deal.data);
+    const archived = isArchivedDeal(deal.data);
+    if (dealFilter === 'archived') return archived;
+    if (archived) return false;
+    if (dealFilter === 'live' && trackingOnly) return false;
+    if (dealFilter === 'tracking' && !trackingOnly) return false;
+    if (!normalizedSearch) return true;
+    return [deal.id, deal.slug, deal.data?.address, deal.data?.city, deal.data?.state]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+  });
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
@@ -401,15 +435,15 @@ export default function AdminPage() {
               </div>
               <div style={{ background: '#eef6ff', padding: 20, borderRadius: 10, textAlign: 'center' }}>
                 <div style={{ fontSize: 32, fontWeight: 'bold', color: '#2878c8' }}>{viewDetailAnalytics?.callClicks ?? '—'}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>Call Clicks</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Call button clicks</div>
               </div>
               <div style={{ background: '#eef6ff', padding: 20, borderRadius: 10, textAlign: 'center' }}>
                 <div style={{ fontSize: 32, fontWeight: 'bold', color: '#2878c8' }}>{viewDetailAnalytics?.textClicks ?? '—'}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>Text Clicks</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Text button clicks</div>
               </div>
               <div style={{ background: '#fff4ec', padding: 20, borderRadius: 10, textAlign: 'center' }}>
-                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#d65f25' }}>{viewDetailAnalytics?.interestedClicks ?? '—'}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>Interested Clicks</div>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#d65f25' }}>{dealLeads.length}</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Identified leads</div>
               </div>
             </div>
           </div>
@@ -488,7 +522,7 @@ export default function AdminPage() {
           {/* Buyer engagement log */}
           <div style={{ background: 'white', borderRadius: 12, padding: 25, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
             <h3 style={{ margin: '0 0 5px', color: '#1a1a2e' }}>Buyer Engagement</h3>
-            <p style={{ color: '#888', fontSize: 13, margin: '0 0 15px' }}>Every Call, Text, and I&apos;m Interested click from this deal page.</p>
+            <p style={{ color: '#888', fontSize: 13, margin: '0 0 15px' }}>Every Call and Text button click from this deal page.</p>
             <div style={{ overflowX: 'auto', maxHeight: 420, overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -499,16 +533,16 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {engagementEvents.map((event, i) => (
+                  {engagementEvents.filter((event) => event.eventType === 'call' || event.eventType === 'text').map((event, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f5f5f5' }}>
                       <td style={{ padding: '10px 8px', color: '#333' }}>{formatDate(event.viewed_at)}</td>
                       <td style={{ padding: '10px 8px', color: '#1a1a2e', fontWeight: 700 }}>
-                        {event.eventType === 'call' ? 'Call' : event.eventType === 'text' ? 'Text' : 'I\'m Interested'}
+                        {event.eventType === 'call' ? 'Call' : 'Text'}
                       </td>
                       <td style={{ padding: '10px 8px', color: '#333', fontFamily: 'monospace', fontSize: 11 }}>{(event.visitor_id || 'unknown').substring(0, 16)}</td>
                     </tr>
                   ))}
-                  {engagementEvents.length === 0 && (
+                  {engagementEvents.filter((event) => event.eventType === 'call' || event.eventType === 'text').length === 0 && (
                     <tr>
                       <td colSpan={3} style={{ padding: 20, textAlign: 'center', color: '#888' }}>No tracked buyer clicks yet.</td>
                     </tr>
@@ -591,6 +625,10 @@ export default function AdminPage() {
               ) : (
                 <><strong>URL:</strong> deals.offmarketdaily.com/d/{editingDeal.slug} — <em>Editing will NOT change this link</em></>
               )}
+              <div className={styles.auditText} style={{ marginTop: 8 }}>
+                <strong>Created by:</strong> {editingDeal.data?.audit?.createdBy || 'Not tracked'}
+                {editingDeal.data?.audit?.lastUpdatedBy && <><br /><strong>Last updated by:</strong> {editingDeal.data.audit.lastUpdatedBy}</>}
+              </div>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
@@ -731,19 +769,15 @@ export default function AdminPage() {
                       const idx = existingCount + i;
                       const fileName = `${slug}/${idx}-photo-${Date.now()}.jpg`;
                       
-                      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/deal-photos/${fileName}`, {
+                      const res = await fetch(`/api/admin/photos?fileName=${encodeURIComponent(fileName)}`, {
                         method: 'POST',
-                        headers: {
-                          'apikey': SUPABASE_ANON_KEY,
-                          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                          'Content-Type': 'image/jpeg'
-                        },
+                        headers: { 'Content-Type': 'image/jpeg' },
                         body: compressed
                       });
                       
                       if (res.ok) {
-                        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/deal-photos/${fileName}`;
-                        newPhotos.push({ url: publicUrl, label: 'Other' });
+                        const result = await res.json();
+                        newPhotos.push({ url: result.url, label: 'Other' });
                       }
                     }
                     
@@ -815,43 +849,64 @@ export default function AdminPage() {
 
   // === DEAL LIST (Main View) ===
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f9fa', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div className={styles.shell}>
       {/* Header */}
-      <div style={{ background: '#1a1a2e', color: 'white', padding: '15px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-          <span style={{ fontWeight: 700, fontSize: 18 }}>OMD Admin</span>
+      <header className={styles.header}>
+        <div className={styles.brand}>
+          <div className={styles.brandMark}>
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div className={styles.brandName}>Off Market Daily</div>
+            <div className={styles.brandLabel}>Staff admin</div>
+          </div>
         </div>
-        <a href="/" style={{ color: '#00b894', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>+ Create New Deal</a>
-      </div>
+        <div className={styles.headerActions}>
+          <a href="/" className={styles.generatorLink}>Create package</a>
+          <SignOutButton />
+        </div>
+      </header>
       
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: 20 }}>
+      <main className={styles.content}>
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.eyebrow}>Deal operations</p>
+            <h1 className={styles.title}>OMD Admin</h1>
+            <p className={styles.subtitle}>Create packages, manage deals, and review buyer activity from one clear staff page.</p>
+          </div>
+          <div className={styles.heroActions}>
+            <button type="button" onClick={() => { setActiveTab('signups'); loadSignups(); }} className={styles.secondaryButton}>View buyers</button>
+            <a href="/" className={styles.primaryButton}>Create new package</a>
+          </div>
+        </section>
+
         {/* Stats bar */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 15, marginBottom: 15 }}>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{deals.length}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Total Deals</div>
+        <div className={styles.stats}>
+          <div className={styles.statCard}>
+            <div className={styles.statValue}>{deals.filter((deal) => !isArchivedDeal(deal.data)).length}</div>
+            <div className={styles.statLabel}>Active deals</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#00b894' }}>{analytics?.totals?.views ?? '—'}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Page Views</div>
+          <div className={styles.statCard}>
+            <div className={`${styles.statValue} ${styles.statValueTeal}`}>{analytics?.totals?.views ?? '-'}</div>
+            <div className={styles.statLabel}>Page views</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#2878c8' }}>{analytics?.totals?.callClicks ?? '—'}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Call Clicks</div>
+          <div className={styles.statCard}>
+            <div className={`${styles.statValue} ${styles.statValueBlue}`}>{analytics?.totals?.callClicks ?? '-'}</div>
+            <div className={styles.statLabel}>Call clicks</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#2878c8' }}>{analytics?.totals?.textClicks ?? '—'}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Text Clicks</div>
+          <div className={styles.statCard}>
+            <div className={`${styles.statValue} ${styles.statValueBlue}`}>{analytics?.totals?.textClicks ?? '-'}</div>
+            <div className={styles.statLabel}>Text clicks</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#d65f25' }}>{analytics?.totals?.interestedClicks ?? '—'}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Interested Clicks</div>
+          <div className={styles.statCard}>
+            <div className={`${styles.statValue} ${styles.statValueOrange}`}>{leadSummary?.total ?? '-'}</div>
+            <div className={styles.statLabel}>Identified leads</div>
           </div>
         </div>
+        <p className={styles.metricNote}>Call and Text are button clicks. Identified leads are buyers who completed the deal-page form.</p>
 
         {analyticsError && (
           <div style={{ marginBottom: 20, padding: 14, borderRadius: 8, background: '#fff4e5', color: '#8a5a00', fontSize: 13, fontWeight: 600 }}>
@@ -859,28 +914,59 @@ export default function AdminPage() {
           </div>
         )}
         
+        <section className={styles.panel}>
         {/* Tab Bar */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 20, background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+        <div className={styles.tabs}>
           <button 
             onClick={() => setActiveTab('deals')} 
-            style={{ flex: 1, padding: '14px 20px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14, background: activeTab === 'deals' ? '#1a1a2e' : 'white', color: activeTab === 'deals' ? 'white' : '#666' }}
+            className={`${styles.tab} ${activeTab === 'deals' ? styles.tabActive : ''}`}
           >
-            Deals ({deals.length})
+            Deals <span>({deals.length})</span>
           </button>
           <button 
             onClick={() => { setActiveTab('signups'); loadSignups(); }} 
-            style={{ flex: 1, padding: '14px 20px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14, background: activeTab === 'signups' ? '#1a1a2e' : 'white', color: activeTab === 'signups' ? 'white' : '#666' }}
+            className={`${styles.tab} ${activeTab === 'signups' ? styles.tabActive : ''}`}
           >
             Buyer Signups
           </button>
+          {currentUser?.role === 'owner' && (
+            <button
+              onClick={() => setActiveTab('team')}
+              className={`${styles.tab} ${activeTab === 'team' ? styles.tabActive : ''}`}
+            >
+              Team Access
+            </button>
+          )}
         </div>
 
         {/* Deals Tab */}
         {activeTab === 'deals' && (
         <>
+        <div className={styles.toolbar}>
+          <input
+            className={styles.search}
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search address, city, state, deal number..."
+            aria-label="Search deals"
+          />
+          <div className={styles.filters}>
+            {[
+              ['all', 'All'],
+              ['live', 'Public pages'],
+              ['tracking', 'Tracking only'],
+              ...(currentUser?.role === 'owner' ? [['archived', 'Archived']] : [])
+            ].map(([value, label]) => (
+              <button key={value} type="button" onClick={() => setDealFilter(value)} className={`${styles.filter} ${dealFilter === value ? styles.filterActive : ''}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         {/* Deals Table */}
-        <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-          <div style={{ overflowX: 'auto' }}>
+        <div>
+          <div className={styles.tableWrap}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee' }}>
@@ -889,13 +975,14 @@ export default function AdminPage() {
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>PRICE</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>MARKET</th>
                   <th style={{ textAlign: 'center', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>VIEWS</th>
-                  <th style={{ textAlign: 'center', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 12 }}>CALL / TEXT / INTERESTED</th>
+                  <th style={{ textAlign: 'center', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 12 }}>CALL / TEXT / LEADS</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>CREATED</th>
+                  <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>CREATED BY</th>
                   <th style={{ textAlign: 'right', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                {deals.map((deal) => (
+                {visibleDeals.map((deal) => (
                   <tr key={deal.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                     <td style={{ padding: '14px 16px', fontWeight: 700, color: '#00b894', whiteSpace: 'nowrap' }}>
                       #{deal.id}
@@ -903,7 +990,9 @@ export default function AdminPage() {
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>{deal.data?.address || 'No address'}</div>
                       <div style={{ color: '#aaa', fontSize: 12 }}>
-                        {isTrackingOnlyDeal(deal.data) ? 'Tracking only • no public page' : deal.slug}
+                        <span className={`${styles.status} ${(isTrackingOnlyDeal(deal.data) || isArchivedDeal(deal.data)) ? styles.statusInternal : ''}`}>
+                          {isArchivedDeal(deal.data) ? 'Archived' : isTrackingOnlyDeal(deal.data) ? 'Tracking only' : 'Public page'}
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1a1a2e' }}>
@@ -939,19 +1028,25 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() => loadViewDetails(deal.slug)}
-                          title="Call / Text / Interested"
+                          title="Call clicks / Text clicks / Identified leads"
                           style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap', padding: 4 }}
                         >
-                          {analytics ? `${analytics.byDeal?.[deal.slug]?.callClicks || 0} / ${analytics.byDeal?.[deal.slug]?.textClicks || 0} / ${analytics.byDeal?.[deal.slug]?.interestedClicks || 0}` : '—'}
+                          {analytics ? `${analytics.byDeal?.[deal.slug]?.callClicks || 0} / ${analytics.byDeal?.[deal.slug]?.textClicks || 0} / ${leadSummary?.byDeal?.[deal.slug] || 0}` : '—'}
                         </button>
                       )}
                     </td>
                     <td style={{ padding: '14px 16px', color: '#888', fontSize: 13 }}>
                       {formatDate(deal.created_at)}
                     </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ color: '#1a1a2e', fontSize: 13, fontWeight: 600 }}>{deal.data?.audit?.createdBy || 'Not tracked'}</div>
+                      {deal.data?.audit?.lastUpdatedBy && deal.data.audit.lastUpdatedBy !== deal.data.audit.createdBy && (
+                        <div className={styles.auditText}>Updated by {deal.data.audit.lastUpdatedBy}</div>
+                      )}
+                    </td>
                     <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        {!isTrackingOnlyDeal(deal.data) && (
+                        {!isTrackingOnlyDeal(deal.data) && !isArchivedDeal(deal.data) && (
                           <a
                             href={`/d/${deal.slug}`}
                             target="_blank"
@@ -966,7 +1061,7 @@ export default function AdminPage() {
                         >
                           Edit
                         </button>
-                        {!isTrackingOnlyDeal(deal.data) && (
+                        {!isTrackingOnlyDeal(deal.data) && !isArchivedDeal(deal.data) && (
                           <button
                             onClick={() => {
                               const url = `https://deals.offmarketdaily.com/d/${deal.slug}`;
@@ -978,18 +1073,66 @@ export default function AdminPage() {
                             Copy Link
                           </button>
                         )}
-                        <button
-                          onClick={() => setDeleteConfirm(deal)}
-                          style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                        >
-                          ✕
-                        </button>
+                        {currentUser?.role === 'owner' && (
+                          <button
+                            onClick={() => setDealArchived(deal, !isArchivedDeal(deal.data))}
+                            disabled={saving}
+                            style={{ padding: '6px 14px', background: isArchivedDeal(deal.data) ? '#eaf9f5' : '#fff4e5', color: isArchivedDeal(deal.data) ? '#008f73' : '#8a5a00', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                          >
+                            {isArchivedDeal(deal.data) ? 'Restore' : 'Archive'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {visibleDeals.length === 0 && <div className={styles.empty}>No deals match this search.</div>}
+          </div>
+          <div className={styles.mobileList}>
+            {visibleDeals.map((deal) => {
+              const trackingOnly = isTrackingOnlyDeal(deal.data);
+              const dealAnalytics = analytics?.byDeal?.[deal.slug];
+              return (
+                <article className={styles.mobileCard} key={`mobile-${deal.id}`}>
+                  <div className={styles.mobileCardTop}>
+                    <div>
+                      <div className={styles.mobileDealNumber}>Deal #{deal.id}</div>
+                      <div className={styles.mobileAddress}>{deal.data?.address || 'No address'}</div>
+                      <div className={styles.mobileMarket}>{deal.data?.city}, {deal.data?.state}</div>
+                      <span className={`${styles.status} ${(trackingOnly || isArchivedDeal(deal.data)) ? styles.statusInternal : ''}`}>{isArchivedDeal(deal.data) ? 'Archived' : trackingOnly ? 'Tracking only' : 'Public page'}</span>
+                      <div className={styles.auditText} style={{ marginTop: 7 }}>Created by {deal.data?.audit?.createdBy || 'Not tracked'}</div>
+                    </div>
+                    <div className={styles.mobilePrice}>${deal.data?.askingPrice ? Number(deal.data.askingPrice).toLocaleString() : '-'}</div>
+                  </div>
+
+                  <div className={styles.mobileMetrics}>
+                    <div>
+                      <span className={styles.mobileMetricLabel}>Views</span>
+                      <span className={styles.mobileMetricValue}>{trackingOnly ? '-' : (dealAnalytics?.views || 0)}</span>
+                    </div>
+                    <div>
+                      <span className={styles.mobileMetricLabel}>Call / Text / Leads</span>
+                      <span className={styles.mobileMetricValue}>{trackingOnly ? '-' : `${dealAnalytics?.callClicks || 0} / ${dealAnalytics?.textClicks || 0} / ${leadSummary?.byDeal?.[deal.slug] || 0}`}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.mobileActions}>
+                    {!trackingOnly && !isArchivedDeal(deal.data) && <button type="button" onClick={() => loadViewDetails(deal.slug)} className={styles.mobileAction}>Analytics</button>}
+                    <button type="button" onClick={() => startEditing(deal)} className={styles.mobileActionPrimary}>Edit</button>
+                    {!trackingOnly && !isArchivedDeal(deal.data) && <a href={`/d/${deal.slug}`} target="_blank" className={styles.mobileAction}>View page</a>}
+                    {!trackingOnly && !isArchivedDeal(deal.data) && (
+                      <button type="button" onClick={() => { navigator.clipboard.writeText(`https://deals.offmarketdaily.com/d/${deal.slug}`); alert('Link copied!'); }} className={styles.mobileAction}>
+                        Copy link
+                      </button>
+                    )}
+                    {currentUser?.role === 'owner' && <button type="button" onClick={() => setDealArchived(deal, !isArchivedDeal(deal.data))} className={styles.mobileActionDanger}>{isArchivedDeal(deal.data) ? 'Restore' : 'Archive'}</button>}
+                  </div>
+                </article>
+              );
+            })}
+            {visibleDeals.length === 0 && <div className={styles.empty}>No deals match this search.</div>}
           </div>
         </div>
         </>
@@ -997,7 +1140,7 @@ export default function AdminPage() {
 
         {/* Buyer Signups Tab */}
         {activeTab === 'signups' && (
-          <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+          <div>
             <div style={{ padding: '16px 20px', borderBottom: '2px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontWeight: 700, fontSize: 16, color: '#1a1a2e' }}>Buyer Signups</span>
@@ -1052,24 +1195,10 @@ export default function AdminPage() {
             )}
           </div>
         )}
-      </div>
+        {activeTab === 'team' && currentUser?.role === 'owner' && <TeamAccess />}
+        </section>
+      </main>
 
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '90%', boxShadow: '0 20px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 12px', color: '#1a1a2e' }}>Delete Deal?</h3>
-            <p style={{ color: '#666', marginBottom: 8 }}>This will permanently delete:</p>
-            <p style={{ fontWeight: 600, color: '#1a1a2e', marginBottom: 20, padding: 12, background: '#f8f9fa', borderRadius: 6 }}>
-              {deleteConfirm.data?.address || deleteConfirm.slug}
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button onClick={() => setDeleteConfirm(null)} style={{ padding: '10px 20px', background: '#f1f5f9', border: 'none', borderRadius: 8, color: '#666', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={() => deleteDeal(deleteConfirm.id)} style={{ padding: '10px 20px', background: '#dc2626', border: 'none', borderRadius: 8, color: 'white', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
