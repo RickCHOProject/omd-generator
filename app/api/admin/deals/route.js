@@ -2,14 +2,19 @@ import { NextResponse } from 'next/server';
 import { getStaffSession } from '../../../../lib/serverAuth';
 import { supabaseServerFetch } from '../../../../lib/supabaseServer';
 import { auditNewDealData, auditUpdatedDealData } from '../../../../lib/dealAudit.mjs';
+import { isOwner } from '../../../../lib/staffAccess.mjs';
 
 const unauthorized = () => NextResponse.json({ error: 'Staff sign-in required.' }, { status: 401 });
 
 export async function GET() {
-  if (!await getStaffSession()) return unauthorized();
+  const session = await getStaffSession();
+  if (!session) return unauthorized();
   const response = await supabaseServerFetch('/rest/v1/deals?select=*&order=created_at.desc');
   const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+  const visibleData = response.ok && !isOwner(session)
+    ? data.filter((deal) => deal?.data?.audit?.archived !== true)
+    : data;
+  return NextResponse.json(visibleData, { status: response.status });
 }
 
 export async function POST(request) {
@@ -43,6 +48,15 @@ export async function PATCH(request) {
     return NextResponse.json({ error: 'The deal could not be found.' }, { status: 404 });
   }
 
+  if (currentRows[0].data?.audit?.archived === true && !isOwner(session)) {
+    return NextResponse.json({ error: 'Only the Owner can edit an archived deal.' }, { status: 403 });
+  }
+
+  const archiveChanged = Boolean(currentRows[0].data?.audit?.archived) !== Boolean(data?.audit?.archived);
+  if (archiveChanged && !isOwner(session)) {
+    return NextResponse.json({ error: 'Only the Owner can archive or restore a deal.' }, { status: 403 });
+  }
+
   const response = await supabaseServerFetch(`/rest/v1/deals?id=eq.${Number(id)}`, {
     method: 'PATCH',
     prefer: 'return=representation',
@@ -56,7 +70,11 @@ export async function PATCH(request) {
 }
 
 export async function DELETE(request) {
-  if (!await getStaffSession()) return unauthorized();
+  const session = await getStaffSession();
+  if (!session) return unauthorized();
+  if (!isOwner(session)) {
+    return NextResponse.json({ error: 'Only the Owner can permanently delete a deal.' }, { status: 403 });
+  }
   const { id } = await request.json();
   if (!Number.isInteger(Number(id))) {
     return NextResponse.json({ error: 'A valid deal is required.' }, { status: 400 });

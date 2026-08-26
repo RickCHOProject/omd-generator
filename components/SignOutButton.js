@@ -4,17 +4,21 @@ import { useEffect, useState } from 'react';
 
 export default function SignOutButton() {
   const [displayName, setDisplayName] = useState('');
+  const [role, setRole] = useState('');
 
   useEffect(() => {
     fetch('/api/auth/session', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : null)
-      .then((session) => setDisplayName(session?.displayName || ''))
+      .then((session) => {
+        setDisplayName(session?.displayName || '');
+        setRole(session?.role || '');
+      })
       .catch(() => {});
   }, []);
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-      {displayName && <span style={{ color: '#cbd0dd', fontSize: 12, fontWeight: 650 }}>{displayName}</span>}
+      {displayName && <span style={{ color: '#cbd0dd', fontSize: 12, fontWeight: 650 }}>{displayName}{role === 'owner' ? ' · Owner' : ''}</span>}
       <form action="/api/auth/logout" method="post">
       <button
         type="submit"

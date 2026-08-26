@@ -1,15 +1,32 @@
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
-import { SESSION_COOKIE, verifySessionToken } from './lib/auth';
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './lib/supabaseConfig';
+import { DEFAULT_OWNER_EMAIL, getOMDAccess } from './lib/staffAccess.mjs';
 
 export async function proxy(request) {
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = await verifySessionToken(token || '', process.env.OMD_SESSION_SECRET || '');
+  let response = NextResponse.next({ request });
+  const supabase = createServerClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+      }
+    }
+  });
 
-  if (session) return NextResponse.next();
+  const { data: { user } } = await supabase.auth.getUser();
+  const session = getOMDAccess(user, process.env.OMD_OWNER_EMAIL || DEFAULT_OWNER_EMAIL);
+  if (session) return response;
 
   const loginUrl = new URL('/login', request.url);
   loginUrl.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
-  return NextResponse.redirect(loginUrl);
+  const redirect = NextResponse.redirect(loginUrl);
+  response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+  return redirect;
 }
 
 export const config = {

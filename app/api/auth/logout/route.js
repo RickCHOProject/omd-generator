@@ -1,16 +1,8 @@
 import { NextResponse } from 'next/server';
-import { SESSION_COOKIE } from '../../../../lib/auth';
+import { createSupabaseAuthClient } from '../../../../lib/supabaseAuthServer';
 
 export async function POST(request) {
-  const response = NextResponse.redirect(new URL('/login', request.url), 303);
-  response.cookies.set({
-    name: SESSION_COOKIE,
-    value: '',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0
-  });
-  return response;
+  const supabase = await createSupabaseAuthClient();
+  await supabase.auth.signOut();
+  return NextResponse.redirect(new URL('/login', request.url), 303);
 }

@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { isTrackingOnlyDeal } from '../../lib/dealRecord.mjs';
+import { isArchivedDeal, isTrackingOnlyDeal } from '../../lib/dealRecord.mjs';
 import SignOutButton from '../../components/SignOutButton';
+import TeamAccess from '../../components/TeamAccess';
 import styles from './admin.module.css';
 
 export default function AdminPage() {
@@ -19,7 +20,6 @@ export default function AdminPage() {
   const [viewDetailAnalytics, setViewDetailAnalytics] = useState(null);
   const [engagementEvents, setEngagementEvents] = useState([]);
   const [viewDetailError, setViewDetailError] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [emailHTML, setEmailHTML] = useState('');
   const [dealLeads, setDealLeads] = useState([]);
   const [leadSummary, setLeadSummary] = useState(null);
@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [loadingSignups, setLoadingSignups] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dealFilter, setDealFilter] = useState('all');
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Fetch all deals
   useEffect(() => {
@@ -65,6 +66,10 @@ export default function AdminPage() {
       setLoading(false);
     };
     loadDeals();
+    fetch('/api/auth/session', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then(setCurrentUser)
+      .catch(() => {});
   }, []);
 
   // Fetch detailed views for a specific deal
@@ -176,21 +181,30 @@ export default function AdminPage() {
     setSaving(false);
   };
 
-  const deleteDeal = async (id) => {
+  const setDealArchived = async (deal, archived) => {
+    setSaving(true);
     try {
-      const res = await fetch('/api/admin/deals', {
-        method: 'DELETE',
+      const nextData = {
+        ...deal.data,
+        audit: {
+          ...(deal.data?.audit || {}),
+          archived,
+          archivedAt: archived ? new Date().toISOString() : null,
+          archivedBy: archived ? (currentUser?.displayName || currentUser?.email || 'Owner') : null
+        }
+      };
+      const response = await fetch('/api/admin/deals', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
+        body: JSON.stringify({ id: deal.id, data: nextData })
       });
-      if (res.ok) {
-        setDeals(prev => prev.filter(d => d.id !== id));
-        setDeleteConfirm(null);
-      } else {
-        alert('Error deleting deal');
-      }
-    } catch (err) {
-      alert('Error: ' + err.message);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'The deal could not be updated.');
+      setDeals((current) => current.map((item) => item.id === deal.id ? { ...item, data: result[0].data } : item));
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -360,6 +374,9 @@ export default function AdminPage() {
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const visibleDeals = deals.filter((deal) => {
     const trackingOnly = isTrackingOnlyDeal(deal.data);
+    const archived = isArchivedDeal(deal.data);
+    if (dealFilter === 'archived') return archived;
+    if (archived) return false;
     if (dealFilter === 'live' && trackingOnly) return false;
     if (dealFilter === 'tracking' && !trackingOnly) return false;
     if (!normalizedSearch) return true;
@@ -869,8 +886,8 @@ export default function AdminPage() {
         {/* Stats bar */}
         <div className={styles.stats}>
           <div className={styles.statCard}>
-            <div className={styles.statValue}>{deals.length}</div>
-            <div className={styles.statLabel}>Deal records</div>
+            <div className={styles.statValue}>{deals.filter((deal) => !isArchivedDeal(deal.data)).length}</div>
+            <div className={styles.statLabel}>Active deals</div>
           </div>
           <div className={styles.statCard}>
             <div className={`${styles.statValue} ${styles.statValueTeal}`}>{analytics?.totals?.views ?? '-'}</div>
@@ -912,6 +929,14 @@ export default function AdminPage() {
           >
             Buyer Signups
           </button>
+          {currentUser?.role === 'owner' && (
+            <button
+              onClick={() => setActiveTab('team')}
+              className={`${styles.tab} ${activeTab === 'team' ? styles.tabActive : ''}`}
+            >
+              Team Access
+            </button>
+          )}
         </div>
 
         {/* Deals Tab */}
@@ -930,7 +955,8 @@ export default function AdminPage() {
             {[
               ['all', 'All'],
               ['live', 'Public pages'],
-              ['tracking', 'Tracking only']
+              ['tracking', 'Tracking only'],
+              ...(currentUser?.role === 'owner' ? [['archived', 'Archived']] : [])
             ].map(([value, label]) => (
               <button key={value} type="button" onClick={() => setDealFilter(value)} className={`${styles.filter} ${dealFilter === value ? styles.filterActive : ''}`}>
                 {label}
@@ -964,8 +990,8 @@ export default function AdminPage() {
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>{deal.data?.address || 'No address'}</div>
                       <div style={{ color: '#aaa', fontSize: 12 }}>
-                        <span className={`${styles.status} ${isTrackingOnlyDeal(deal.data) ? styles.statusInternal : ''}`}>
-                          {isTrackingOnlyDeal(deal.data) ? 'Tracking only' : 'Public page'}
+                        <span className={`${styles.status} ${(isTrackingOnlyDeal(deal.data) || isArchivedDeal(deal.data)) ? styles.statusInternal : ''}`}>
+                          {isArchivedDeal(deal.data) ? 'Archived' : isTrackingOnlyDeal(deal.data) ? 'Tracking only' : 'Public page'}
                         </span>
                       </div>
                     </td>
@@ -1020,7 +1046,7 @@ export default function AdminPage() {
                     </td>
                     <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        {!isTrackingOnlyDeal(deal.data) && (
+                        {!isTrackingOnlyDeal(deal.data) && !isArchivedDeal(deal.data) && (
                           <a
                             href={`/d/${deal.slug}`}
                             target="_blank"
@@ -1035,7 +1061,7 @@ export default function AdminPage() {
                         >
                           Edit
                         </button>
-                        {!isTrackingOnlyDeal(deal.data) && (
+                        {!isTrackingOnlyDeal(deal.data) && !isArchivedDeal(deal.data) && (
                           <button
                             onClick={() => {
                               const url = `https://deals.offmarketdaily.com/d/${deal.slug}`;
@@ -1047,12 +1073,15 @@ export default function AdminPage() {
                             Copy Link
                           </button>
                         )}
-                        <button
-                          onClick={() => setDeleteConfirm(deal)}
-                          style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                        >
-                          ✕
-                        </button>
+                        {currentUser?.role === 'owner' && (
+                          <button
+                            onClick={() => setDealArchived(deal, !isArchivedDeal(deal.data))}
+                            disabled={saving}
+                            style={{ padding: '6px 14px', background: isArchivedDeal(deal.data) ? '#eaf9f5' : '#fff4e5', color: isArchivedDeal(deal.data) ? '#008f73' : '#8a5a00', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                          >
+                            {isArchivedDeal(deal.data) ? 'Restore' : 'Archive'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1072,7 +1101,7 @@ export default function AdminPage() {
                       <div className={styles.mobileDealNumber}>Deal #{deal.id}</div>
                       <div className={styles.mobileAddress}>{deal.data?.address || 'No address'}</div>
                       <div className={styles.mobileMarket}>{deal.data?.city}, {deal.data?.state}</div>
-                      <span className={`${styles.status} ${trackingOnly ? styles.statusInternal : ''}`}>{trackingOnly ? 'Tracking only' : 'Public page'}</span>
+                      <span className={`${styles.status} ${(trackingOnly || isArchivedDeal(deal.data)) ? styles.statusInternal : ''}`}>{isArchivedDeal(deal.data) ? 'Archived' : trackingOnly ? 'Tracking only' : 'Public page'}</span>
                       <div className={styles.auditText} style={{ marginTop: 7 }}>Created by {deal.data?.audit?.createdBy || 'Not tracked'}</div>
                     </div>
                     <div className={styles.mobilePrice}>${deal.data?.askingPrice ? Number(deal.data.askingPrice).toLocaleString() : '-'}</div>
@@ -1090,15 +1119,15 @@ export default function AdminPage() {
                   </div>
 
                   <div className={styles.mobileActions}>
-                    {!trackingOnly && <button type="button" onClick={() => loadViewDetails(deal.slug)} className={styles.mobileAction}>Analytics</button>}
+                    {!trackingOnly && !isArchivedDeal(deal.data) && <button type="button" onClick={() => loadViewDetails(deal.slug)} className={styles.mobileAction}>Analytics</button>}
                     <button type="button" onClick={() => startEditing(deal)} className={styles.mobileActionPrimary}>Edit</button>
-                    {!trackingOnly && <a href={`/d/${deal.slug}`} target="_blank" className={styles.mobileAction}>View page</a>}
-                    {!trackingOnly && (
+                    {!trackingOnly && !isArchivedDeal(deal.data) && <a href={`/d/${deal.slug}`} target="_blank" className={styles.mobileAction}>View page</a>}
+                    {!trackingOnly && !isArchivedDeal(deal.data) && (
                       <button type="button" onClick={() => { navigator.clipboard.writeText(`https://deals.offmarketdaily.com/d/${deal.slug}`); alert('Link copied!'); }} className={styles.mobileAction}>
                         Copy link
                       </button>
                     )}
-                    <button type="button" onClick={() => setDeleteConfirm(deal)} className={styles.mobileActionDanger}>Delete</button>
+                    {currentUser?.role === 'owner' && <button type="button" onClick={() => setDealArchived(deal, !isArchivedDeal(deal.data))} className={styles.mobileActionDanger}>{isArchivedDeal(deal.data) ? 'Restore' : 'Archive'}</button>}
                   </div>
                 </article>
               );
@@ -1166,25 +1195,10 @@ export default function AdminPage() {
             )}
           </div>
         )}
+        {activeTab === 'team' && currentUser?.role === 'owner' && <TeamAccess />}
         </section>
       </main>
 
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '90%', boxShadow: '0 20px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 12px', color: '#1a1a2e' }}>Delete Deal?</h3>
-            <p style={{ color: '#666', marginBottom: 8 }}>This will permanently delete:</p>
-            <p style={{ fontWeight: 600, color: '#1a1a2e', marginBottom: 20, padding: 12, background: '#f8f9fa', borderRadius: 6 }}>
-              {deleteConfirm.data?.address || deleteConfirm.slug}
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button onClick={() => setDeleteConfirm(null)} style={{ padding: '10px 20px', background: '#f1f5f9', border: 'none', borderRadius: 8, color: '#666', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={() => deleteDeal(deleteConfirm.id)} style={{ padding: '10px 20px', background: '#dc2626', border: 'none', borderRadius: 8, color: 'white', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

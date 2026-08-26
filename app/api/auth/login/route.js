@@ -1,58 +1,29 @@
 import { NextResponse } from 'next/server';
-import {
-  createSessionToken,
-  hashPassword,
-  parseStaffUsers,
-  SESSION_COOKIE,
-  SESSION_DURATION_SECONDS
-} from '../../../../lib/auth';
-
-const valuesMatch = (left, right) => {
-  if (!left || !right || left.length !== right.length) return false;
-  let difference = 0;
-  for (let index = 0; index < left.length; index += 1) {
-    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
-  }
-  return difference === 0;
-};
+import { createSupabaseAuthClient } from '../../../../lib/supabaseAuthServer';
+import { DEFAULT_OWNER_EMAIL, getOMDAccess } from '../../../../lib/staffAccess.mjs';
 
 export async function POST(request) {
-  const sessionSecret = process.env.OMD_SESSION_SECRET;
-  const staffUsers = parseStaffUsers(process.env.OMD_STAFF_USERS_JSON);
-
-  const legacyUsername = process.env.OMD_LOGIN_USERNAME?.trim().toLowerCase();
-  const legacyPasswordHash = process.env.OMD_LOGIN_PASSWORD_SHA256?.trim().toLowerCase();
-  if (legacyUsername && legacyPasswordHash && !staffUsers[legacyUsername]) {
-    staffUsers[legacyUsername] = {
-      username: legacyUsername,
-      displayName: legacyUsername,
-      passwordHash: legacyPasswordHash
-    };
+  const { email = '', password = '' } = await request.json();
+  const normalizedEmail = String(email).trim().toLowerCase();
+  if (!normalizedEmail || !password) {
+    return NextResponse.json({ error: 'Enter your email and password.' }, { status: 400 });
   }
 
-  if (!Object.keys(staffUsers).length || !sessionSecret) {
-    return NextResponse.json({ error: 'Staff login has not been configured yet.' }, { status: 503 });
-  }
-
-  const { username = '', password = '' } = await request.json();
-  const normalizedUsername = username.trim().toLowerCase();
-  const submittedPasswordHash = await hashPassword(password);
-  const account = staffUsers[normalizedUsername];
-
-  if (!account || !valuesMatch(submittedPasswordHash, account.passwordHash)) {
-    return NextResponse.json({ error: 'Username or password is incorrect.' }, { status: 401 });
-  }
-
-  const token = await createSessionToken(normalizedUsername, sessionSecret, { name: account.displayName });
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set({
-    name: SESSION_COOKIE,
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: SESSION_DURATION_SECONDS
+  const supabase = await createSupabaseAuthClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password
   });
-  return response;
+
+  if (error || !data.user) {
+    return NextResponse.json({ error: 'Email or password is incorrect.' }, { status: 401 });
+  }
+
+  const session = getOMDAccess(data.user, process.env.OMD_OWNER_EMAIL || DEFAULT_OWNER_EMAIL);
+  if (!session) {
+    await supabase.auth.signOut();
+    return NextResponse.json({ error: 'This account does not have access to OMD.' }, { status: 403 });
+  }
+
+  return NextResponse.json({ ok: true, role: session.role });
 }

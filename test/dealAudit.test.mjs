@@ -29,3 +29,22 @@ test('deal updates preserve the creator and record the editor', () => {
   assert.equal(updated.audit.createdBy, 'Mark');
   assert.equal(updated.audit.lastUpdatedBy, 'Mariel');
 });
+
+test('owner archive state survives the standard update audit', () => {
+  const existing = auditNewDealData(
+    { address: '123 Main St' },
+    { sub: 'mark', name: 'Mark' },
+    '2026-08-25T12:00:00.000Z'
+  );
+  const updated = auditUpdatedDealData(
+    { ...existing, audit: { ...existing.audit, archived: true, archivedBy: 'Rick' } },
+    existing,
+    { sub: 'rick', name: 'Rick' },
+    '2026-08-25T13:00:00.000Z'
+  );
+
+  assert.equal(updated.audit.archived, true);
+  assert.equal(updated.audit.archivedBy, 'Rick');
+  assert.equal(updated.audit.createdBy, 'Mark');
+  assert.equal(updated.audit.lastUpdatedBy, 'Rick');
+});
