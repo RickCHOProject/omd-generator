@@ -321,17 +321,14 @@ export default function DealPage() {
       {/* Main Page */}
       <div style={{
         minHeight: '100vh',
-        background: '#eef1f4',
+        background: 'white',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
-        {/* Keep the approved listing composition together while giving wide screens a little more room. */}
+        {/* Fluid page shell; individual content areas control their own readable width. */}
         <div style={{ 
           width: '100%',
-          maxWidth: 1400,
-          margin: '0 auto',
           background: 'white',
-          minHeight: '100vh',
-          boxShadow: '0 0 40px rgba(26,26,46,0.08)'
+          minHeight: '100vh'
         }}>
           
           {/* Header */}
@@ -357,7 +354,22 @@ export default function DealPage() {
           </div>
           {/* Hero Image Section */}
           {heroPhoto && (
-            <div style={{ position: 'relative' }}>
+            <div style={{
+              position: 'relative',
+              overflow: 'hidden',
+              background: '#1a1a2e'
+            }}>
+              {/* Extend the selected photo across ultra-wide screens without stretching the primary image. */}
+              <div aria-hidden="true" style={{
+                position: 'absolute',
+                inset: -30,
+                backgroundImage: `linear-gradient(rgba(26,26,46,0.32), rgba(26,26,46,0.32)), url("${heroPhoto.url}")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(24px)',
+                transform: 'scale(1.08)',
+                opacity: 0.72
+              }} />
               {/* Main Image - Click to Enlarge, SWIPE to navigate */}
               <div
                 onClick={() => openLightbox(selectedPhotoIndex)}
@@ -365,6 +377,8 @@ export default function DealPage() {
                 style={{
                   position: 'relative',
                   width: '100%',
+                  maxWidth: 1400,
+                  margin: '0 auto',
                   height: 'clamp(240px, 38vw, 460px)',
                   cursor: 'pointer',
                   overflow: 'hidden'
@@ -421,7 +435,7 @@ export default function DealPage() {
                 <div className="deal-thumbnail-strip" style={{
                   display: 'flex',
                   gap: 8,
-                  padding: '12px 20px',
+                  padding: '12px max(20px, calc((100vw - 1400px) / 2 + 20px))',
                   background: '#1a1a2e',
                   overflowX: 'auto'
                 }}>
@@ -509,7 +523,12 @@ export default function DealPage() {
             </div>
           </div>
           {/* Details Section */}
-          <div className="deal-details" style={{ padding: 'clamp(20px, 5vw, 40px)' }}>
+          <div className="deal-details" style={{
+            width: '100%',
+            maxWidth: 1200,
+            margin: '0 auto',
+            padding: 'clamp(20px, 5vw, 40px)'
+          }}>
             
             {/* Stats Grid */}
             <div className="deal-stats-grid" style={{
