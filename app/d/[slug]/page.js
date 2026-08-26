@@ -362,7 +362,10 @@ export default function DealPage() {
                 style={{
                   position: 'relative',
                   width: '100%',
-                  height: 'clamp(320px, min(56.25vw, 70vh), 760px)',
+                  // The frame can widen with the page, but its height stops growing.
+                  // object-fit keeps the photo proportional and crops the excess instead
+                  // of making the image taller and visibly enlarged on wide monitors.
+                  height: 'clamp(240px, 38vw, 460px)',
                   cursor: 'pointer',
                   overflow: 'hidden'
                 }}
