@@ -89,8 +89,8 @@ export default function TeamAccess() {
         <form onSubmit={inviteMember} style={{ padding: 20, border: '1px solid #e7eaf0', borderRadius: 12, background: '#fbfcfd' }}>
           <h2 style={{ margin: 0, color: '#171a31', fontSize: 18 }}>Invite a staff member</h2>
           <p style={{ margin: '7px 0 18px', color: '#747989', fontSize: 13, lineHeight: 1.5 }}>They receive an email to create their own password. No password is shared with you.</p>
-          <label htmlFor="staff-name" style={{ display: 'block', marginBottom: 6, color: '#45495a', fontSize: 13, fontWeight: 700 }}>Name</label>
-          <input id="staff-name" value={name} onChange={(event) => setName(event.target.value)} required style={{ width: '100%', boxSizing: 'border-box', padding: 11, marginBottom: 14, border: '1px solid #dfe3e9', borderRadius: 8, fontSize: 14 }} />
+          <label htmlFor="staff-name" style={{ display: 'block', marginBottom: 6, color: '#45495a', fontSize: 13, fontWeight: 700 }}>Full name</label>
+          <input id="staff-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="First and last name" autoComplete="name" autoCapitalize="words" required style={{ width: '100%', boxSizing: 'border-box', padding: 11, marginBottom: 14, border: '1px solid #dfe3e9', borderRadius: 8, fontSize: 14 }} />
           <label htmlFor="staff-email" style={{ display: 'block', marginBottom: 6, color: '#45495a', fontSize: 13, fontWeight: 700 }}>Work email</label>
           <input id="staff-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required style={{ width: '100%', boxSizing: 'border-box', padding: 11, border: '1px solid #dfe3e9', borderRadius: 8, fontSize: 14 }} />
           <button type="submit" disabled={saving} style={{ width: '100%', marginTop: 16, padding: 11, border: 0, borderRadius: 8, background: '#00b894', color: 'white', cursor: 'pointer', fontWeight: 750 }}>

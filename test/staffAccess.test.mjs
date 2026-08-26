@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_OWNER_EMAIL, getOMDAccess, isOwner } from '../lib/staffAccess.mjs';
+import { DEFAULT_OWNER_EMAIL, formatDisplayName, getOMDAccess, isFullDisplayName, isOwner } from '../lib/staffAccess.mjs';
 
 const user = (overrides = {}) => ({
   id: 'user-1',
@@ -42,4 +42,15 @@ test('deactivated staff are denied', () => {
   assert.equal(getOMDAccess(user({
     app_metadata: { omd_role: 'staff', omd_active: false }
   })), null);
+});
+
+test('staff names are normalized for professional display', () => {
+  assert.equal(formatDisplayName('  rICK   vasQUEZ '), 'Rick Vasquez');
+  assert.equal(formatDisplayName("mARIA o'BRIEN jr"), "Maria O'Brien Jr.");
+  assert.equal(formatDisplayName('alex mcDONALD iii'), 'Alex McDonald III');
+});
+
+test('new staff invitations require a first and last name', () => {
+  assert.equal(isFullDisplayName('Mark'), false);
+  assert.equal(isFullDisplayName('Mark Smith'), true);
 });

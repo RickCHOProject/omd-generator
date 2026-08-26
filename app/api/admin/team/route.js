@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getOwnerSession } from '../../../../lib/serverAuth';
 import { createSupabaseAdminClient } from '../../../../lib/supabaseAuthServer';
-import { DEFAULT_OWNER_EMAIL, normalizeEmail, OMD_ROLES } from '../../../../lib/staffAccess.mjs';
+import { DEFAULT_OWNER_EMAIL, formatDisplayName, isFullDisplayName, normalizeEmail, OMD_ROLES } from '../../../../lib/staffAccess.mjs';
 
 const unauthorized = () => NextResponse.json({ error: 'Owner access is required.' }, { status: 403 });
 
@@ -16,7 +16,7 @@ const memberRecord = (user, ownerEmail) => {
   return {
     id: user.id,
     email,
-    displayName: String(user.user_metadata?.display_name || user.user_metadata?.full_name || email.split('@')[0]).slice(0, 80),
+    displayName: formatDisplayName(user.user_metadata?.display_name || user.user_metadata?.full_name || email.split('@')[0]),
     role: isOwner ? OMD_ROLES.OWNER : OMD_ROLES.STAFF,
     active: isOwner || user.app_metadata?.omd_active !== false,
     invitedAt: user.invited_at || user.created_at || null,
@@ -54,9 +54,9 @@ export async function POST(request) {
 
   const { email = '', displayName = '' } = await request.json();
   const normalizedEmail = normalizeEmail(email);
-  const cleanName = String(displayName).trim().slice(0, 80);
-  if (!normalizedEmail || !cleanName) {
-    return NextResponse.json({ error: 'Enter the staff member’s name and email.' }, { status: 400 });
+  const cleanName = formatDisplayName(displayName);
+  if (!normalizedEmail || !isFullDisplayName(cleanName)) {
+    return NextResponse.json({ error: 'Enter the staff member’s full name and email.' }, { status: 400 });
   }
   if (normalizedEmail === normalizeEmail(process.env.OMD_OWNER_EMAIL || DEFAULT_OWNER_EMAIL)) {
     return NextResponse.json({ error: 'The Owner account already has access.' }, { status: 400 });
@@ -82,7 +82,8 @@ export async function POST(request) {
       },
       user_metadata: {
         ...existingUser.user_metadata,
-        display_name: cleanName
+        display_name: cleanName,
+        full_name: cleanName
       }
     });
     if (existingError) return NextResponse.json({ error: 'That existing account could not be approved.' }, { status: 502 });
@@ -96,7 +97,7 @@ export async function POST(request) {
   const redirectTo = `${new URL(request.url).origin}/auth/callback?next=/reset-password`;
   const { data, error } = await supabase.auth.admin.inviteUserByEmail(normalizedEmail, {
     redirectTo,
-    data: { display_name: cleanName }
+    data: { display_name: cleanName, full_name: cleanName }
   });
   if (error || !data.user) {
     return NextResponse.json({ error: error?.message || 'The invitation could not be sent.' }, { status: 400 });
@@ -110,7 +111,8 @@ export async function POST(request) {
     },
     user_metadata: {
       ...data.user.user_metadata,
-      display_name: cleanName
+      display_name: cleanName,
+      full_name: cleanName
     }
   });
   if (updateError) {
