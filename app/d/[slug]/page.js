@@ -324,17 +324,14 @@ export default function DealPage() {
       {/* Main Page */}
       <div style={{
         minHeight: '100vh',
-        background: '#eef1f4',
+        background: 'white',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
-        {/* Centered listing container */}
+        {/* Full-width listing shell; the photo grid absorbs wide screens without stretching one image. */}
         <div style={{ 
           width: '100%',
-          maxWidth: 1200,
-          margin: '0 auto',
           background: 'white',
-          minHeight: '100vh',
-          boxShadow: '0 0 40px rgba(26,26,46,0.08)'
+          minHeight: '100vh'
         }}>
           
           {/* Header */}
@@ -523,7 +520,12 @@ export default function DealPage() {
             </div>
           </div>
           {/* Details Section */}
-          <div className="deal-details" style={{ padding: 'clamp(20px, 5vw, 40px)' }}>
+          <div className="deal-details" style={{
+            width: '100%',
+            maxWidth: 1200,
+            margin: '0 auto',
+            padding: 'clamp(20px, 5vw, 40px)'
+          }}>
             
             {/* Stats Grid */}
             <div className="deal-stats-grid" style={{
