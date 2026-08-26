@@ -324,7 +324,7 @@ export default function DealPage() {
         background: 'white',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
-        {/* Full-width listing shell. The photo height remains capped below. */}
+        {/* Full-width listing shell. The hero itself is capped below to preserve photo proportions. */}
         <div style={{ 
           width: '100%',
           background: 'white',
@@ -354,7 +354,7 @@ export default function DealPage() {
           </div>
           {/* Hero Image Section */}
           {heroPhoto && (
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', background: '#1a1a2e' }}>
               {/* Main Image - Click to Enlarge, SWIPE to navigate */}
               <div
                 onClick={() => openLightbox(selectedPhotoIndex)}
@@ -362,6 +362,8 @@ export default function DealPage() {
                 style={{
                   position: 'relative',
                   width: '100%',
+                  maxWidth: 1400,
+                  margin: '0 auto',
                   height: 'clamp(240px, 38vw, 460px)',
                   cursor: 'pointer',
                   overflow: 'hidden'
