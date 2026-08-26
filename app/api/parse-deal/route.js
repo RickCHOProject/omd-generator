@@ -1,8 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getStaffSession } from '../../../lib/serverAuth';
 
 const anthropic = new Anthropic();
 
 export async function POST(request) {
+  if (!await getStaffSession()) {
+    return Response.json({ error: 'Staff sign-in required.' }, { status: 401 });
+  }
   try {
     const body = await request.json();
     const rawText = body.rawText;

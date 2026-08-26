@@ -1,22 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { isTrackingOnlyDeal } from '../../lib/dealRecord.mjs';
+import SignOutButton from '../../components/SignOutButton';
+import styles from './admin.module.css';
 
 const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
-
-const supaFetch = (path, options = {}) => {
-  return fetch(`${SUPABASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': options.prefer || 'return=representation',
-      ...(options.headers || {})
-    }
-  });
-};
 
 export default function AdminPage() {
   const [deals, setDeals] = useState([]);
@@ -38,13 +27,16 @@ export default function AdminPage() {
   const [dealLeads, setDealLeads] = useState([]);
   const [buyerSignups, setBuyerSignups] = useState([]);
   const [loadingSignups, setLoadingSignups] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dealFilter, setDealFilter] = useState('all');
 
   // Fetch all deals
   useEffect(() => {
     const loadDeals = async () => {
       try {
-        const res = await supaFetch('/rest/v1/deals?select=*&order=created_at.desc');
+        const res = await fetch('/api/admin/deals', { cache: 'no-store' });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Deal request failed.');
         setDeals(data || []);
         
       } catch (err) {
@@ -90,8 +82,9 @@ export default function AdminPage() {
     }
     // Also fetch leads
     try {
-      const res = await supaFetch(`/rest/v1/deal_leads?deal_slug=eq.${slug}&select=*&order=created_at.desc`);
+      const res = await fetch(`/api/admin/leads?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Lead request failed.');
       setDealLeads(data || []);
     } catch (err) {
       setDealLeads([]);
@@ -102,8 +95,9 @@ export default function AdminPage() {
   const loadSignups = async () => {
     setLoadingSignups(true);
     try {
-      const res = await supaFetch('/rest/v1/buyer_signups?select=*&order=created_at.desc');
+      const res = await fetch('/api/admin/buyers', { cache: 'no-store' });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Buyer request failed.');
       setBuyerSignups(data || []);
     } catch (err) {
       console.error('Error loading signups:', err);
@@ -149,13 +143,10 @@ export default function AdminPage() {
     setSaving(true);
     setSaveMsg('');
     try {
-      const res = await supaFetch(`/rest/v1/deals?id=eq.${editingDeal.id}`, {
+      const res = await fetch('/api/admin/deals', {
         method: 'PATCH',
-        prefer: 'return=representation',
-        body: JSON.stringify({ 
-          data: editData,
-          updated_at: new Date().toISOString()
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingDeal.id, data: editData })
       });
       const result = await res.json();
       if (res.ok) {
@@ -176,7 +167,11 @@ export default function AdminPage() {
 
   const deleteDeal = async (id) => {
     try {
-      const res = await supaFetch(`/rest/v1/deals?id=eq.${id}`, { method: 'DELETE' });
+      const res = await fetch('/api/admin/deals', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
       if (res.ok) {
         setDeals(prev => prev.filter(d => d.id !== id));
         setDeleteConfirm(null);
@@ -350,6 +345,17 @@ export default function AdminPage() {
       hour: 'numeric', minute: '2-digit' 
     });
   };
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const visibleDeals = deals.filter((deal) => {
+    const trackingOnly = isTrackingOnlyDeal(deal.data);
+    if (dealFilter === 'live' && trackingOnly) return false;
+    if (dealFilter === 'tracking' && !trackingOnly) return false;
+    if (!normalizedSearch) return true;
+    return [deal.id, deal.slug, deal.data?.address, deal.data?.city, deal.data?.state]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+  });
 
   if (loading) {
     return (
@@ -815,41 +821,61 @@ export default function AdminPage() {
 
   // === DEAL LIST (Main View) ===
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f9fa', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div className={styles.shell}>
       {/* Header */}
-      <div style={{ background: '#1a1a2e', color: 'white', padding: '15px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-          <span style={{ fontWeight: 700, fontSize: 18 }}>OMD Admin</span>
+      <header className={styles.header}>
+        <div className={styles.brand}>
+          <div className={styles.brandMark}>
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div className={styles.brandName}>Off Market Daily</div>
+            <div className={styles.brandLabel}>Staff admin</div>
+          </div>
         </div>
-        <a href="/" style={{ color: '#00b894', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>+ Create New Deal</a>
-      </div>
+        <div className={styles.headerActions}>
+          <a href="/" className={styles.generatorLink}>Create package</a>
+          <SignOutButton />
+        </div>
+      </header>
       
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: 20 }}>
+      <main className={styles.content}>
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.eyebrow}>Deal operations</p>
+            <h1 className={styles.title}>OMD Admin</h1>
+            <p className={styles.subtitle}>Create packages, manage deals, and review buyer activity from one clear staff page.</p>
+          </div>
+          <div className={styles.heroActions}>
+            <button type="button" onClick={() => { setActiveTab('signups'); loadSignups(); }} className={styles.secondaryButton}>View buyers</button>
+            <a href="/" className={styles.primaryButton}>Create new package</a>
+          </div>
+        </section>
+
         {/* Stats bar */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 15, marginBottom: 15 }}>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{deals.length}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Total Deals</div>
+        <div className={styles.stats}>
+          <div className={styles.statCard}>
+            <div className={styles.statValue}>{deals.length}</div>
+            <div className={styles.statLabel}>Deal records</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#00b894' }}>{analytics?.totals?.views ?? '—'}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Page Views</div>
+          <div className={styles.statCard}>
+            <div className={`${styles.statValue} ${styles.statValueTeal}`}>{analytics?.totals?.views ?? '-'}</div>
+            <div className={styles.statLabel}>Page views</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#2878c8' }}>{analytics?.totals?.callClicks ?? '—'}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Call Clicks</div>
+          <div className={styles.statCard}>
+            <div className={`${styles.statValue} ${styles.statValueBlue}`}>{analytics?.totals?.callClicks ?? '-'}</div>
+            <div className={styles.statLabel}>Call clicks</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#2878c8' }}>{analytics?.totals?.textClicks ?? '—'}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Text Clicks</div>
+          <div className={styles.statCard}>
+            <div className={`${styles.statValue} ${styles.statValueBlue}`}>{analytics?.totals?.textClicks ?? '-'}</div>
+            <div className={styles.statLabel}>Text clicks</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#d65f25' }}>{analytics?.totals?.interestedClicks ?? '—'}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Interested Clicks</div>
+          <div className={styles.statCard}>
+            <div className={`${styles.statValue} ${styles.statValueOrange}`}>{analytics?.totals?.interestedClicks ?? '-'}</div>
+            <div className={styles.statLabel}>Interested clicks</div>
           </div>
         </div>
 
@@ -859,17 +885,18 @@ export default function AdminPage() {
           </div>
         )}
         
+        <section className={styles.panel}>
         {/* Tab Bar */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 20, background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+        <div className={styles.tabs}>
           <button 
             onClick={() => setActiveTab('deals')} 
-            style={{ flex: 1, padding: '14px 20px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14, background: activeTab === 'deals' ? '#1a1a2e' : 'white', color: activeTab === 'deals' ? 'white' : '#666' }}
+            className={`${styles.tab} ${activeTab === 'deals' ? styles.tabActive : ''}`}
           >
-            Deals ({deals.length})
+            Deals <span>({deals.length})</span>
           </button>
           <button 
             onClick={() => { setActiveTab('signups'); loadSignups(); }} 
-            style={{ flex: 1, padding: '14px 20px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14, background: activeTab === 'signups' ? '#1a1a2e' : 'white', color: activeTab === 'signups' ? 'white' : '#666' }}
+            className={`${styles.tab} ${activeTab === 'signups' ? styles.tabActive : ''}`}
           >
             Buyer Signups
           </button>
@@ -878,9 +905,30 @@ export default function AdminPage() {
         {/* Deals Tab */}
         {activeTab === 'deals' && (
         <>
+        <div className={styles.toolbar}>
+          <input
+            className={styles.search}
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search address, city, state, deal number..."
+            aria-label="Search deals"
+          />
+          <div className={styles.filters}>
+            {[
+              ['all', 'All'],
+              ['live', 'Public pages'],
+              ['tracking', 'Tracking only']
+            ].map(([value, label]) => (
+              <button key={value} type="button" onClick={() => setDealFilter(value)} className={`${styles.filter} ${dealFilter === value ? styles.filterActive : ''}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         {/* Deals Table */}
-        <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-          <div style={{ overflowX: 'auto' }}>
+        <div>
+          <div className={styles.tableWrap}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee' }}>
@@ -895,7 +943,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {deals.map((deal) => (
+                {visibleDeals.map((deal) => (
                   <tr key={deal.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                     <td style={{ padding: '14px 16px', fontWeight: 700, color: '#00b894', whiteSpace: 'nowrap' }}>
                       #{deal.id}
@@ -903,7 +951,9 @@ export default function AdminPage() {
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>{deal.data?.address || 'No address'}</div>
                       <div style={{ color: '#aaa', fontSize: 12 }}>
-                        {isTrackingOnlyDeal(deal.data) ? 'Tracking only • no public page' : deal.slug}
+                        <span className={`${styles.status} ${isTrackingOnlyDeal(deal.data) ? styles.statusInternal : ''}`}>
+                          {isTrackingOnlyDeal(deal.data) ? 'Tracking only' : 'Public page'}
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1a1a2e' }}>
@@ -990,6 +1040,50 @@ export default function AdminPage() {
                 ))}
               </tbody>
             </table>
+            {visibleDeals.length === 0 && <div className={styles.empty}>No deals match this search.</div>}
+          </div>
+          <div className={styles.mobileList}>
+            {visibleDeals.map((deal) => {
+              const trackingOnly = isTrackingOnlyDeal(deal.data);
+              const dealAnalytics = analytics?.byDeal?.[deal.slug];
+              return (
+                <article className={styles.mobileCard} key={`mobile-${deal.id}`}>
+                  <div className={styles.mobileCardTop}>
+                    <div>
+                      <div className={styles.mobileDealNumber}>Deal #{deal.id}</div>
+                      <div className={styles.mobileAddress}>{deal.data?.address || 'No address'}</div>
+                      <div className={styles.mobileMarket}>{deal.data?.city}, {deal.data?.state}</div>
+                      <span className={`${styles.status} ${trackingOnly ? styles.statusInternal : ''}`}>{trackingOnly ? 'Tracking only' : 'Public page'}</span>
+                    </div>
+                    <div className={styles.mobilePrice}>${deal.data?.askingPrice ? Number(deal.data.askingPrice).toLocaleString() : '-'}</div>
+                  </div>
+
+                  <div className={styles.mobileMetrics}>
+                    <div>
+                      <span className={styles.mobileMetricLabel}>Views</span>
+                      <span className={styles.mobileMetricValue}>{trackingOnly ? '-' : (dealAnalytics?.views || 0)}</span>
+                    </div>
+                    <div>
+                      <span className={styles.mobileMetricLabel}>Call / Text / Interested</span>
+                      <span className={styles.mobileMetricValue}>{trackingOnly ? '-' : `${dealAnalytics?.callClicks || 0} / ${dealAnalytics?.textClicks || 0} / ${dealAnalytics?.interestedClicks || 0}`}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.mobileActions}>
+                    {!trackingOnly && <button type="button" onClick={() => loadViewDetails(deal.slug)} className={styles.mobileAction}>Analytics</button>}
+                    <button type="button" onClick={() => startEditing(deal)} className={styles.mobileActionPrimary}>Edit</button>
+                    {!trackingOnly && <a href={`/d/${deal.slug}`} target="_blank" className={styles.mobileAction}>View page</a>}
+                    {!trackingOnly && (
+                      <button type="button" onClick={() => { navigator.clipboard.writeText(`https://deals.offmarketdaily.com/d/${deal.slug}`); alert('Link copied!'); }} className={styles.mobileAction}>
+                        Copy link
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setDeleteConfirm(deal)} className={styles.mobileActionDanger}>Delete</button>
+                  </div>
+                </article>
+              );
+            })}
+            {visibleDeals.length === 0 && <div className={styles.empty}>No deals match this search.</div>}
           </div>
         </div>
         </>
@@ -997,7 +1091,7 @@ export default function AdminPage() {
 
         {/* Buyer Signups Tab */}
         {activeTab === 'signups' && (
-          <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+          <div>
             <div style={{ padding: '16px 20px', borderBottom: '2px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontWeight: 700, fontSize: 16, color: '#1a1a2e' }}>Buyer Signups</span>
@@ -1052,7 +1146,8 @@ export default function AdminPage() {
             )}
           </div>
         )}
-      </div>
+        </section>
+      </main>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
