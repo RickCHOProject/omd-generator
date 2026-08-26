@@ -5,9 +5,6 @@ import { EMPTY_DEAL, extractTextBlastPhotoLink, getMissingDealFields, parseDealI
 import { buildPublishedDealRecord, buildTrackingOnlyDealRecord } from '../lib/dealRecord.mjs';
 import { buildTextBlast } from '../lib/textBlast.mjs';
 
-const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
-
 // House Icon Component
 const HouseIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -183,19 +180,15 @@ export default function OMDGenerator() {
       
       const fileName = `${slug}/${i}-${photo.label.toLowerCase().replace(/\s+/g, '-')}.jpg`;
       
-      const response = await fetch(`${SUPABASE_URL}/storage/v1/object/deal-photos/${fileName}`, {
+      const response = await fetch(`/api/admin/photos?fileName=${encodeURIComponent(fileName)}`, {
         method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'image/jpeg'
-        },
+        headers: { 'Content-Type': 'image/jpeg' },
         body: photo.file
       });
       
       if (response.ok) {
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/deal-photos/${fileName}`;
-        uploadedUrls.push({ url: publicUrl, label: photo.label });
+        const result = await response.json();
+        uploadedUrls.push({ url: result.url, label: photo.label });
       }
     }
     
@@ -218,14 +211,9 @@ export default function OMDGenerator() {
         suffix: slug.split('-').pop()
       }).data;
       
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/deals`, {
+      const response = await fetch('/api/admin/deals', {
         method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slug: slug,
           data: dealData
@@ -258,14 +246,9 @@ export default function OMDGenerator() {
 
     try {
       const record = buildTrackingOnlyDealRecord({ formData });
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/deals`, {
+      const response = await fetch('/api/admin/deals', {
         method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(record)
       });
 

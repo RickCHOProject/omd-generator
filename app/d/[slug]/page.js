@@ -203,14 +203,6 @@ export default function DealPage() {
     try { localStorage.setItem('omd_lead_' + params.slug, 'dismissed'); } catch (e) {}
   };
 
-  const openInterestedForm = () => {
-    setShowLeadPopup(true);
-    if (!interestedTrackedRef.current) {
-      interestedTrackedRef.current = true;
-      trackDealEvent('interested');
-    }
-  };
-
   const handleContactClick = async (event, eventType, href) => {
     event.preventDefault();
     await trackDealEvent(eventType);
@@ -651,23 +643,6 @@ export default function DealPage() {
                 >
                   📞 Call
                 </a>
-                <button
-                  type="button"
-                  onClick={openInterestedForm}
-                  style={{
-                    display: 'inline-block',
-                    background: 'white',
-                    color: '#1a1a2e',
-                    padding: '16px 32px',
-                    borderRadius: 30,
-                    fontWeight: 'bold',
-                    fontSize: 17,
-                    border: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  I&apos;m Interested
-                </button>
               </div>
             </div>
             {/* Full Disclosures */}

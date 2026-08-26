@@ -181,6 +181,18 @@
   font-weight: 650;
 }
 
+.metricNote {
+  margin: -7px 2px 19px;
+  color: #858a98;
+  font-size: 12px;
+}
+
+.auditText {
+  color: #666b79;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .panel {
   overflow: hidden;
   border: 1px solid #e7eaf0;

@@ -4,9 +4,6 @@ import { isTrackingOnlyDeal } from '../../lib/dealRecord.mjs';
 import SignOutButton from '../../components/SignOutButton';
 import styles from './admin.module.css';
 
-const SUPABASE_URL = 'https://wqvfsynpxfwacesvjlmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_L0SuigrNUZpsWC66KSVCOA_EuypYe5i';
-
 export default function AdminPage() {
   const [deals, setDeals] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -25,6 +22,7 @@ export default function AdminPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [emailHTML, setEmailHTML] = useState('');
   const [dealLeads, setDealLeads] = useState([]);
+  const [leadSummary, setLeadSummary] = useState(null);
   const [buyerSignups, setBuyerSignups] = useState([]);
   const [loadingSignups, setLoadingSignups] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +52,16 @@ export default function AdminPage() {
         setAnalytics(null);
         setAnalyticsError('Analytics are unavailable. Counts are hidden instead of showing an incorrect zero.');
       }
+
+      try {
+        const leadsRes = await fetch('/api/admin/leads', { cache: 'no-store' });
+        const leadsData = await leadsRes.json();
+        if (!leadsRes.ok) throw new Error(leadsData.error || 'Lead summary request failed.');
+        setLeadSummary(leadsData);
+      } catch (err) {
+        console.error('Error loading lead summary:', err);
+        setLeadSummary(null);
+      }
       setLoading(false);
     };
     loadDeals();
@@ -64,6 +72,7 @@ export default function AdminPage() {
     setViewDetails(slug);
     setViewDetailData([]);
     setEngagementEvents([]);
+    setDealLeads([]);
     setViewDetailAnalytics(null);
     setViewDetailError('');
     try {
@@ -150,12 +159,14 @@ export default function AdminPage() {
       });
       const result = await res.json();
       if (res.ok) {
+        const savedData = result?.[0]?.data || editData;
         setSaveMsg('✅ Deal updated! Same URL, new content.');
         // Update local state
         setDeals(prev => prev.map(d => 
-          d.id === editingDeal.id ? { ...d, data: editData } : d
+          d.id === editingDeal.id ? { ...d, data: savedData } : d
         ));
-        setEditingDeal(prev => ({ ...prev, data: editData }));
+        setEditingDeal(prev => ({ ...prev, data: savedData }));
+        setEditData(savedData);
       } else {
         setSaveMsg('❌ Error saving: ' + (result.message || 'Unknown error'));
       }
@@ -407,15 +418,15 @@ export default function AdminPage() {
               </div>
               <div style={{ background: '#eef6ff', padding: 20, borderRadius: 10, textAlign: 'center' }}>
                 <div style={{ fontSize: 32, fontWeight: 'bold', color: '#2878c8' }}>{viewDetailAnalytics?.callClicks ?? '—'}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>Call Clicks</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Call button clicks</div>
               </div>
               <div style={{ background: '#eef6ff', padding: 20, borderRadius: 10, textAlign: 'center' }}>
                 <div style={{ fontSize: 32, fontWeight: 'bold', color: '#2878c8' }}>{viewDetailAnalytics?.textClicks ?? '—'}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>Text Clicks</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Text button clicks</div>
               </div>
               <div style={{ background: '#fff4ec', padding: 20, borderRadius: 10, textAlign: 'center' }}>
-                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#d65f25' }}>{viewDetailAnalytics?.interestedClicks ?? '—'}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>Interested Clicks</div>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#d65f25' }}>{dealLeads.length}</div>
+                <div style={{ color: '#666', fontSize: 13 }}>Identified leads</div>
               </div>
             </div>
           </div>
@@ -494,7 +505,7 @@ export default function AdminPage() {
           {/* Buyer engagement log */}
           <div style={{ background: 'white', borderRadius: 12, padding: 25, marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
             <h3 style={{ margin: '0 0 5px', color: '#1a1a2e' }}>Buyer Engagement</h3>
-            <p style={{ color: '#888', fontSize: 13, margin: '0 0 15px' }}>Every Call, Text, and I&apos;m Interested click from this deal page.</p>
+            <p style={{ color: '#888', fontSize: 13, margin: '0 0 15px' }}>Every Call and Text button click from this deal page.</p>
             <div style={{ overflowX: 'auto', maxHeight: 420, overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -505,16 +516,16 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {engagementEvents.map((event, i) => (
+                  {engagementEvents.filter((event) => event.eventType === 'call' || event.eventType === 'text').map((event, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f5f5f5' }}>
                       <td style={{ padding: '10px 8px', color: '#333' }}>{formatDate(event.viewed_at)}</td>
                       <td style={{ padding: '10px 8px', color: '#1a1a2e', fontWeight: 700 }}>
-                        {event.eventType === 'call' ? 'Call' : event.eventType === 'text' ? 'Text' : 'I\'m Interested'}
+                        {event.eventType === 'call' ? 'Call' : 'Text'}
                       </td>
                       <td style={{ padding: '10px 8px', color: '#333', fontFamily: 'monospace', fontSize: 11 }}>{(event.visitor_id || 'unknown').substring(0, 16)}</td>
                     </tr>
                   ))}
-                  {engagementEvents.length === 0 && (
+                  {engagementEvents.filter((event) => event.eventType === 'call' || event.eventType === 'text').length === 0 && (
                     <tr>
                       <td colSpan={3} style={{ padding: 20, textAlign: 'center', color: '#888' }}>No tracked buyer clicks yet.</td>
                     </tr>
@@ -597,6 +608,10 @@ export default function AdminPage() {
               ) : (
                 <><strong>URL:</strong> deals.offmarketdaily.com/d/{editingDeal.slug} — <em>Editing will NOT change this link</em></>
               )}
+              <div className={styles.auditText} style={{ marginTop: 8 }}>
+                <strong>Created by:</strong> {editingDeal.data?.audit?.createdBy || 'Not tracked'}
+                {editingDeal.data?.audit?.lastUpdatedBy && <><br /><strong>Last updated by:</strong> {editingDeal.data.audit.lastUpdatedBy}</>}
+              </div>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
@@ -737,19 +752,15 @@ export default function AdminPage() {
                       const idx = existingCount + i;
                       const fileName = `${slug}/${idx}-photo-${Date.now()}.jpg`;
                       
-                      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/deal-photos/${fileName}`, {
+                      const res = await fetch(`/api/admin/photos?fileName=${encodeURIComponent(fileName)}`, {
                         method: 'POST',
-                        headers: {
-                          'apikey': SUPABASE_ANON_KEY,
-                          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                          'Content-Type': 'image/jpeg'
-                        },
+                        headers: { 'Content-Type': 'image/jpeg' },
                         body: compressed
                       });
                       
                       if (res.ok) {
-                        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/deal-photos/${fileName}`;
-                        newPhotos.push({ url: publicUrl, label: 'Other' });
+                        const result = await res.json();
+                        newPhotos.push({ url: result.url, label: 'Other' });
                       }
                     }
                     
@@ -874,10 +885,11 @@ export default function AdminPage() {
             <div className={styles.statLabel}>Text clicks</div>
           </div>
           <div className={styles.statCard}>
-            <div className={`${styles.statValue} ${styles.statValueOrange}`}>{analytics?.totals?.interestedClicks ?? '-'}</div>
-            <div className={styles.statLabel}>Interested clicks</div>
+            <div className={`${styles.statValue} ${styles.statValueOrange}`}>{leadSummary?.total ?? '-'}</div>
+            <div className={styles.statLabel}>Identified leads</div>
           </div>
         </div>
+        <p className={styles.metricNote}>Call and Text are button clicks. Identified leads are buyers who completed the deal-page form.</p>
 
         {analyticsError && (
           <div style={{ marginBottom: 20, padding: 14, borderRadius: 8, background: '#fff4e5', color: '#8a5a00', fontSize: 13, fontWeight: 600 }}>
@@ -937,8 +949,9 @@ export default function AdminPage() {
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>PRICE</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>MARKET</th>
                   <th style={{ textAlign: 'center', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>VIEWS</th>
-                  <th style={{ textAlign: 'center', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 12 }}>CALL / TEXT / INTERESTED</th>
+                  <th style={{ textAlign: 'center', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 12 }}>CALL / TEXT / LEADS</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>CREATED</th>
+                  <th style={{ textAlign: 'left', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>CREATED BY</th>
                   <th style={{ textAlign: 'right', padding: '14px 16px', color: '#888', fontWeight: 600, fontSize: 13 }}>ACTIONS</th>
                 </tr>
               </thead>
@@ -989,15 +1002,21 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() => loadViewDetails(deal.slug)}
-                          title="Call / Text / Interested"
+                          title="Call clicks / Text clicks / Identified leads"
                           style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap', padding: 4 }}
                         >
-                          {analytics ? `${analytics.byDeal?.[deal.slug]?.callClicks || 0} / ${analytics.byDeal?.[deal.slug]?.textClicks || 0} / ${analytics.byDeal?.[deal.slug]?.interestedClicks || 0}` : '—'}
+                          {analytics ? `${analytics.byDeal?.[deal.slug]?.callClicks || 0} / ${analytics.byDeal?.[deal.slug]?.textClicks || 0} / ${leadSummary?.byDeal?.[deal.slug] || 0}` : '—'}
                         </button>
                       )}
                     </td>
                     <td style={{ padding: '14px 16px', color: '#888', fontSize: 13 }}>
                       {formatDate(deal.created_at)}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ color: '#1a1a2e', fontSize: 13, fontWeight: 600 }}>{deal.data?.audit?.createdBy || 'Not tracked'}</div>
+                      {deal.data?.audit?.lastUpdatedBy && deal.data.audit.lastUpdatedBy !== deal.data.audit.createdBy && (
+                        <div className={styles.auditText}>Updated by {deal.data.audit.lastUpdatedBy}</div>
+                      )}
                     </td>
                     <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1054,6 +1073,7 @@ export default function AdminPage() {
                       <div className={styles.mobileAddress}>{deal.data?.address || 'No address'}</div>
                       <div className={styles.mobileMarket}>{deal.data?.city}, {deal.data?.state}</div>
                       <span className={`${styles.status} ${trackingOnly ? styles.statusInternal : ''}`}>{trackingOnly ? 'Tracking only' : 'Public page'}</span>
+                      <div className={styles.auditText} style={{ marginTop: 7 }}>Created by {deal.data?.audit?.createdBy || 'Not tracked'}</div>
                     </div>
                     <div className={styles.mobilePrice}>${deal.data?.askingPrice ? Number(deal.data.askingPrice).toLocaleString() : '-'}</div>
                   </div>
@@ -1064,8 +1084,8 @@ export default function AdminPage() {
                       <span className={styles.mobileMetricValue}>{trackingOnly ? '-' : (dealAnalytics?.views || 0)}</span>
                     </div>
                     <div>
-                      <span className={styles.mobileMetricLabel}>Call / Text / Interested</span>
-                      <span className={styles.mobileMetricValue}>{trackingOnly ? '-' : `${dealAnalytics?.callClicks || 0} / ${dealAnalytics?.textClicks || 0} / ${dealAnalytics?.interestedClicks || 0}`}</span>
+                      <span className={styles.mobileMetricLabel}>Call / Text / Leads</span>
+                      <span className={styles.mobileMetricValue}>{trackingOnly ? '-' : `${dealAnalytics?.callClicks || 0} / ${dealAnalytics?.textClicks || 0} / ${leadSummary?.byDeal?.[deal.slug] || 0}`}</span>
                     </div>
                   </div>
 
