@@ -316,6 +316,9 @@ export default function DealPage() {
   const heroPhoto = photos[selectedPhotoIndex] || photos[0];
   const maxThumbnails = 5;
   const remainingPhotos = photos.length - maxThumbnails;
+  const sidePhotoIndexes = [1, 2]
+    .map((offset) => (selectedPhotoIndex + offset) % photos.length)
+    .filter((index, position, indexes) => index !== selectedPhotoIndex && indexes.indexOf(index) === position);
   return (
     <>
       {/* Main Page */}
@@ -358,28 +361,60 @@ export default function DealPage() {
           {/* Hero Image Section */}
           {heroPhoto && (
             <div style={{ position: 'relative' }}>
-              {/* Main Image - Click to Enlarge, SWIPE to navigate */}
-              <div
-                onClick={() => openLightbox(selectedPhotoIndex)}
-                {...heroSwipeHandlers}
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  height: 'clamp(240px, 38vw, 460px)',
-                  cursor: 'pointer',
-                  overflow: 'hidden'
-                }}
-              >
-                <img
-                  src={heroPhoto.url}
-                  alt={heroPhoto.label || 'Property'}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    objectPosition: 'center'
-                  }}
-                />
+              <div className="deal-hero-grid">
+                {/* Main Image - Click to Enlarge, SWIPE to navigate */}
+                <div
+                  className="deal-hero-main"
+                  onClick={() => openLightbox(selectedPhotoIndex)}
+                  {...heroSwipeHandlers}
+                >
+                  <img
+                    src={heroPhoto.url}
+                    alt={heroPhoto.label || 'Property'}
+                    className="deal-hero-image"
+                  />
+                  {/* Address overlay */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+                    padding: '60px 20px 20px'
+                  }}>
+                    <h1 style={{
+                      color: 'white',
+                      margin: 0,
+                      fontSize: 'clamp(20px, 5vw, 32px)',
+                      fontWeight: 700
+                    }}>{deal.address}</h1>
+                    <p style={{
+                      color: 'rgba(255,255,255,0.85)',
+                      margin: '5px 0 0',
+                      fontSize: 'clamp(14px, 3vw, 18px)'
+                    }}>{deal.city}, {deal.state} {deal.zip}</p>
+                  </div>
+                </div>
+                {sidePhotoIndexes.length > 0 && (
+                  <div
+                    className="deal-hero-side"
+                    style={{ gridTemplateRows: `repeat(${sidePhotoIndexes.length}, minmax(0, 1fr))` }}
+                  >
+                    {sidePhotoIndexes.map((photoIndex) => (
+                      <div
+                        key={photoIndex}
+                        className="deal-hero-tile"
+                        onClick={() => openLightbox(photoIndex)}
+                      >
+                        <img
+                          src={photos[photoIndex].url}
+                          alt={photos[photoIndex].label || `Property photo ${photoIndex + 1}`}
+                          className="deal-hero-image"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {/* Click to enlarge hint */}
                 <div style={{
                   position: 'absolute',
@@ -393,27 +428,6 @@ export default function DealPage() {
                   fontWeight: 500
                 }}>
                   {photos.length > 1 ? `View all ${photos.length} photos` : 'Click to enlarge'}
-                </div>
-                {/* Address overlay */}
-                <div style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
-                  padding: '60px 20px 20px'
-                }}>
-                  <h1 style={{
-                    color: 'white',
-                    margin: 0,
-                    fontSize: 'clamp(20px, 5vw, 32px)',
-                    fontWeight: 700
-                  }}>{deal.address}</h1>
-                  <p style={{
-                    color: 'rgba(255,255,255,0.85)',
-                    margin: '5px 0 0',
-                    fontSize: 'clamp(14px, 3vw, 18px)'
-                  }}>{deal.city}, {deal.state} {deal.zip}</p>
                 </div>
               </div>
               {/* Thumbnail Strip */}
