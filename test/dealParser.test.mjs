@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { extractTextBlastPhotoLink, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
+import { buildConditionNoteOptions, extractTextBlastPhotoLink, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
 
 const acquisitionsPackage = `MANDATORY Property Package:
 
@@ -183,6 +183,27 @@ test('polish replaces blunt and uncertain system descriptions with professional 
 
   assert.equal(polished, 'The roof shows signs of age and should be evaluated; replacement may be needed. Water heater condition was not confirmed and should be verified.');
   assert.doesNotMatch(polished, /last leg|should be fine/i);
+});
+
+test('buyer-friendly polish offers three distinct investor versions without dropping repair facts', () => {
+  const raw = 'Heavy rehab. The house needs a complete plumbing replacement due to poly piping and ceiling water damage (drywall torn back in family room under master bath). It also needs a lot of cosmetic updates, and the windows and garage doors definitely need to be replaced. HVAC: Not mentioned in the script. Roof: New roof.';
+  const options = buildConditionNoteOptions(raw);
+
+  assert.deepEqual(options.map((option) => option.id), ['balanced', 'value-add', 'direct']);
+  assert.equal(new Set(options.map((option) => option.text)).size, 3);
+  for (const option of options) {
+    assert.match(option.text, /poly piping/);
+    assert.match(option.text, /ceiling water damage/);
+    assert.match(option.text, /cosmetic updates/i);
+    assert.match(option.text, /windows and garage doors need replacement/i);
+    assert.match(option.text, /HVAC condition was not provided and should be verified/);
+    assert.match(option.text, /The roof is new/);
+    assert.doesNotMatch(option.text, /heavy rehab|definitely|not mentioned in the script/i);
+  }
+});
+
+test('buyer-friendly options return nothing for blank notes', () => {
+  assert.deepEqual(buildConditionNoteOptions('   '), []);
 });
 
 test('extractTextBlastPhotoLink reads the dedicated Google Drive field', () => {
