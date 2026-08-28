@@ -6,5 +6,5 @@ test('the package generator provides a direct return to Admin', async () => {
   const source = await readFile(new URL('../app/page.js', import.meta.url), 'utf8');
 
   assert.match(source, /href="\/admin"/);
-  assert.match(source, /← Back to Admin/);
+  assert.match(source, /← Admin/);
 });

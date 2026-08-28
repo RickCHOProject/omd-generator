@@ -475,7 +475,7 @@ export default function OMDGenerator() {
                 whiteSpace: 'nowrap'
               }}
             >
-              ← Back to Admin
+              ← Admin
             </a>
           </div>
 
