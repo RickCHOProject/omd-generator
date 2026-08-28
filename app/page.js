@@ -737,6 +737,14 @@ export default function OMDGenerator() {
 
   // OMD PAGE PREVIEW
   if (previewMode === 'page') {
+    const previewMaxThumbnails = 5;
+    const previewRemainingPhotos = photos.length - previewMaxThumbnails;
+    const previewSidePhotoIndexes = photos.length > 1
+      ? [1, 2]
+        .map((offset) => (activeImg + offset) % photos.length)
+        .filter((index, position, indexes) => index !== activeImg && indexes.indexOf(index) === position)
+      : [];
+
     return (
       <div style={{ minHeight: '100vh', background: 'white' }}>
         <div style={{ width: '100%' }}>
@@ -748,121 +756,72 @@ export default function OMDGenerator() {
             <span style={{ background: '#00b894', padding: '4px 12px', borderRadius: 20, fontSize: 12 }}>Exclusive Deal</span>
           </div>
 
-          {/* ZILLOW-STYLE PHOTO GALLERY AT TOP */}
+          {/* Match the approved public buyer-page photo grid exactly. */}
           {photos.length > 0 ? (
             <div style={{ position: 'relative' }}>
-              {/* Main Photo Display - CLICK TO OPEN LIGHTBOX */}
-              <div 
-                onClick={() => setLightboxOpen(true)}
-                style={{ 
-                  position: 'relative', 
-                  height: 400,
-                  background: '#1a1a2e',
-                  cursor: 'pointer'
-                }}
-              >
-                <img 
-                  src={photos[activeImg]?.url} 
-                  alt="" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
-                {/* Click to enlarge hint */}
+              <div className="deal-hero-grid">
+                <div
+                  className="deal-hero-main"
+                  onClick={() => setLightboxOpen(true)}
+                >
+                  <img
+                    src={photos[activeImg]?.url}
+                    alt={photos[activeImg]?.label || 'Property'}
+                    className="deal-hero-image"
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+                    padding: '60px 20px 20px'
+                  }}>
+                    <h1 style={{ color: 'white', margin: 0, fontSize: 'clamp(20px, 5vw, 32px)' }}>{formData.address}</h1>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', margin: '5px 0 0', fontSize: 'clamp(14px, 3vw, 18px)' }}>
+                      {formData.city}, {formData.state} {formData.zip}
+                    </p>
+                  </div>
+                </div>
+                {previewSidePhotoIndexes.length > 0 && (
+                  <div
+                    className="deal-hero-side"
+                    style={{ gridTemplateRows: `repeat(${previewSidePhotoIndexes.length}, minmax(0, 1fr))` }}
+                  >
+                    {previewSidePhotoIndexes.map((photoIndex) => (
+                      <div
+                        key={photoIndex}
+                        className="deal-hero-tile"
+                        onClick={() => { setActiveImg(photoIndex); setLightboxOpen(true); }}
+                      >
+                        <img
+                          src={photos[photoIndex].url}
+                          alt={photos[photoIndex].label || `Property photo ${photoIndex + 1}`}
+                          className="deal-hero-image"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{
                   position: 'absolute',
-                  top: 16,
-                  right: 80,
-                  padding: '8px 12px',
+                  top: 15,
+                  right: 15,
                   background: 'rgba(0,0,0,0.6)',
-                  borderRadius: 8,
+                  color: 'white',
+                  padding: '6px 12px',
+                  borderRadius: 6,
                   fontSize: 12,
-                  color: '#fff'
-                }}>
-                  Click to enlarge
-                </div>
-                {/* Address Overlay */}
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', padding: 30 }}>
-                  <h1 style={{ color: 'white', margin: 0, fontSize: 28 }}>{formData.address}</h1>
-                  <p style={{ color: 'rgba(255,255,255,0.8)', margin: '5px 0 0' }}>{formData.city}, {formData.state} {formData.zip}</p>
-                </div>
-                {/* Photo Label */}
-                <div style={{ 
-                  position: 'absolute', 
-                  top: 16, 
-                  left: 16, 
-                  padding: '10px 18px', 
-                  background: '#fff', 
-                  borderRadius: 10, 
-                  fontSize: 14, 
-                  fontWeight: 600,
-                  color: '#374151',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                }}>
-                  {photos[activeImg]?.label}
-                </div>
-                {/* Photo Counter */}
-                <div style={{ 
-                  position: 'absolute', 
-                  top: 16, 
-                  right: 16, 
-                  padding: '10px 16px', 
-                  background: 'rgba(0,0,0,0.7)', 
-                  borderRadius: 10, 
-                  fontSize: 13, 
-                  color: '#fff',
                   fontWeight: 500
                 }}>
-                  {activeImg + 1} / {photos.length}
+                  {photos.length > 1 ? `View all ${photos.length} photos` : 'Click to enlarge'}
                 </div>
-                {/* Left Arrow */}
-                {activeImg > 0 && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setActiveImg(activeImg - 1); }}
-                    style={{ 
-                      position: 'absolute', 
-                      left: 16, 
-                      top: '50%', 
-                      transform: 'translateY(-50%)',
-                      background: 'rgba(255,255,255,0.9)', 
-                      border: 'none', 
-                      color: '#1a1a2e', 
-                      fontSize: 24, 
-                      cursor: 'pointer',
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    ‹
-                  </button>
-                )}
-                {/* Right Arrow */}
-                {activeImg < photos.length - 1 && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setActiveImg(activeImg + 1); }}
-                    style={{ 
-                      position: 'absolute', 
-                      right: 16, 
-                      top: '50%', 
-                      transform: 'translateY(-50%)',
-                      background: 'rgba(255,255,255,0.9)', 
-                      border: 'none', 
-                      color: '#1a1a2e', 
-                      fontSize: 24, 
-                      cursor: 'pointer',
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    ›
-                  </button>
-                )}
               </div>
 
               {/* Thumbnails */}
               {photos.length > 1 && (
-                <div style={{ display: 'flex', gap: 8, padding: '10px 16px', background: '#f8f9fa', overflowX: 'auto' }}>
-                  {photos.map((photo, i) => (
+                <div className="deal-thumbnail-strip" style={{ display: 'flex', gap: 8, padding: '12px 20px', background: '#1a1a2e', overflowX: 'auto' }}>
+                  {photos.slice(0, previewMaxThumbnails).map((photo, i) => (
                     <div
                       key={i}
                       onClick={() => setActiveImg(i)}
@@ -880,6 +839,27 @@ export default function OMDGenerator() {
                       <img src={photo.url} alt={photo.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ))}
+                  {previewRemainingPhotos > 0 && (
+                    <div
+                      onClick={() => setLightboxOpen(true)}
+                      style={{
+                        flexShrink: 0,
+                        width: 80,
+                        height: 60,
+                        borderRadius: 6,
+                        background: 'rgba(255,255,255,0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: 'white',
+                        fontWeight: 600,
+                        fontSize: 14
+                      }}
+                    >
+                      +{previewRemainingPhotos} more
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1027,16 +1007,16 @@ export default function OMDGenerator() {
             </div>
           )}
 
-          <div style={{ background: 'linear-gradient(135deg, #00b894, #00cec9)', padding: 25, textAlign: 'center', color: 'white' }}>
-            <div style={{ fontSize: 14, opacity: 0.9 }}>ASKING PRICE</div>
-            <div style={{ fontSize: 48, fontWeight: 'bold' }}>${formatPrice(formData.askingPrice)}</div>
-            <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.2)', display: 'inline-block', padding: '8px 20px', borderRadius: 20 }}>
+          <div className="deal-price-banner" style={{ background: 'linear-gradient(135deg, #00b894, #00cec9)', padding: '24px clamp(22px, 5vw, 48px)', textAlign: 'center', color: 'white' }}>
+            <div style={{ fontSize: 12, opacity: 0.9, letterSpacing: 1.5, fontWeight: 700 }}>ASKING PRICE</div>
+            <div style={{ fontSize: 'clamp(42px, 6vw, 60px)', lineHeight: 1.05, fontWeight: 800, marginTop: 6 }}>${formatPrice(formData.askingPrice)}</div>
+            <div style={{ marginTop: 14, background: 'rgba(255,255,255,0.2)', display: 'inline-block', padding: '8px 20px', borderRadius: 20 }}>
               Estimated ARV: ${formatPrice(formData.arv)}
             </div>
           </div>
 
-          <div style={{ padding: 30 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 30 }}>
+          <div className="deal-details" style={{ width: '100%', padding: 'clamp(20px, 5vw, 40px)' }}>
+            <div className="deal-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'clamp(10px, 3vw, 20px)', marginBottom: 35 }}>
               <div style={{ textAlign: 'center', padding: 20, background: '#f8f9fa', borderRadius: 12 }}>
                 <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{formData.beds}</div>
                 <div style={{ color: '#666' }}>Beds</div>
@@ -1056,7 +1036,7 @@ export default function OMDGenerator() {
             </div>
 
             <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10 }}>Deal Terms</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 30 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 15, marginBottom: 35 }}>
               <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8 }}>
                 <div style={{ color: '#666', fontSize: 14 }}>Occupancy</div>
                 <div style={{ fontWeight: 600 }}>{formData.occupancy || 'TBD'}</div>
@@ -1078,11 +1058,16 @@ export default function OMDGenerator() {
             <h2 style={{ color: '#1a1a2e', borderBottom: '2px solid #00b894', paddingBottom: 10 }}>Property Condition</h2>
             <p style={{ color: '#666', lineHeight: 1.8 }}>{formData.conditionNotes}</p>
 
-            <div style={{ textAlign: 'center', marginTop: 40, padding: 30, background: '#1a1a2e', borderRadius: 12 }}>
-              <h2 style={{ color: 'white', margin: '0 0 15px' }}>Interested in this deal?</h2>
-              <a href={`sms:${formData.phone}`} style={{ display: 'inline-block', background: 'linear-gradient(135deg, #00b894, #00cec9)', color: 'white', padding: '15px 40px', borderRadius: 30, textDecoration: 'none', fontWeight: 'bold', fontSize: 18 }}>
-                I'm Interested - Text Now
-              </a>
+            <div style={{ textAlign: 'center', marginTop: 45, padding: 'clamp(25px, 5vw, 40px)', background: '#1a1a2e', borderRadius: 16 }}>
+              <h2 style={{ color: 'white', margin: '0 0 20px', fontSize: 'clamp(20px, 5vw, 28px)' }}>Interested in this deal?</h2>
+              <div data-omd-preview-contact-actions="approved" style={{ display: 'flex', gap: 15, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <a href={`sms:${formData.phone}`} style={{ display: 'inline-block', background: 'linear-gradient(135deg, #00b894, #00cec9)', color: 'white', padding: '16px 40px', borderRadius: 30, textDecoration: 'none', fontWeight: 'bold', fontSize: 17 }}>
+                  📱 Text Now
+                </a>
+                <a href={`tel:${formData.phone}`} style={{ display: 'inline-block', background: 'rgba(255,255,255,0.15)', color: 'white', padding: '16px 40px', borderRadius: 30, textDecoration: 'none', fontWeight: 'bold', fontSize: 17, border: '2px solid rgba(255,255,255,0.3)' }}>
+                  📞 Call
+                </a>
+              </div>
             </div>
 
             <div style={{ marginTop: 40, padding: 20, background: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#888', lineHeight: 1.7 }}>
