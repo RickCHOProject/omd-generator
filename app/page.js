@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
-import { EMPTY_DEAL, extractTextBlastPhotoLink, getMissingDealFields, parseDealInput, polishConditionNotes } from '../lib/dealParser.mjs';
+import { buildConditionNoteOptions, EMPTY_DEAL, extractTextBlastPhotoLink, getMissingDealFields, parseDealInput } from '../lib/dealParser.mjs';
 import { buildPublishedDealRecord, buildTrackingOnlyDealRecord } from '../lib/dealRecord.mjs';
 import { buildTextBlast } from '../lib/textBlast.mjs';
 import { safeHtmlTemplate } from '../lib/htmlSecurity.mjs';
@@ -70,16 +70,27 @@ export default function OMDGenerator() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [polishingNotes, setPolishingNotes] = useState(false);
   const [polishNotice, setPolishNotice] = useState('');
+  const [polishOptions, setPolishOptions] = useState([]);
+  const [selectedPolishOption, setSelectedPolishOption] = useState('');
+  const [polishSource, setPolishSource] = useState('');
 
-  // Polish raw notes into professional marketing copy - CLIENT SIDE ONLY
+  // Create truthful buyer-facing choices without sending deal facts to an outside service.
   const polishNotes = () => {
     if (!formData.conditionNotes.trim()) return;
     setPolishingNotes(true);
-    const polished = polishConditionNotes(formData.conditionNotes);
-    const changed = polished !== formData.conditionNotes.trim();
-    setFormData({ ...formData, conditionNotes: polished });
-    setPolishNotice(changed ? 'Condition notes polished.' : 'Notes already look polished.');
+    const source = polishOptions.length && polishSource ? polishSource : formData.conditionNotes;
+    const options = buildConditionNoteOptions(source);
+    setPolishSource(source);
+    setPolishOptions(options);
+    setSelectedPolishOption('');
+    setPolishNotice(options.length ? 'Choose the version that fits this deal.' : 'Add condition notes first.');
     setPolishingNotes(false);
+  };
+
+  const usePolishOption = (option) => {
+    setFormData({ ...formData, conditionNotes: option.text });
+    setSelectedPolishOption(option.id);
+    setPolishNotice(`${option.label} version selected. You can still choose another option below.`);
   };
 
   // CLIENT-SIDE PARSER - No API needed, instant and reliable
@@ -95,6 +106,9 @@ export default function OMDGenerator() {
     setFacebookVariantOffset(0);
     setTextBlastPhotoLink(extractTextBlastPhotoLink(rawInput));
     setPolishNotice('');
+    setPolishOptions([]);
+    setSelectedPolishOption('');
+    setPolishSource(data.conditionNotes);
     setParseNotice(missingFields.length
       ? { type: 'warning', text: `Parsed the buyer-facing details found. Still needed: ${missingFields.join(', ')}.` }
       : { type: 'success', text: 'All buyer-facing deal fields were found.' });
@@ -533,6 +547,9 @@ export default function OMDGenerator() {
                   onChange={(e) => {
                     setFormData({ ...formData, conditionNotes: e.target.value });
                     setPolishNotice('');
+                    setPolishOptions([]);
+                    setSelectedPolishOption('');
+                    setPolishSource(e.target.value);
                   }}
                   style={{ width: '100%', height: 80, padding: 10, border: '1px solid #ddd', borderRadius: 6 }}
                 />
@@ -551,11 +568,53 @@ export default function OMDGenerator() {
                     fontWeight: 500
                   }}
                 >
-                  {polishingNotes ? 'Polishing...' : '✨ Polish Notes for Buyers'}
+                  {polishingNotes ? 'Creating options...' : '✨ Create Buyer-Friendly Options'}
                 </button>
                 <span style={{ marginLeft: 10, fontSize: 12, color: polishNotice ? '#116149' : '#888' }}>
-                  {polishNotice || 'Rewrites raw notes into professional marketing copy'}
+                  {polishNotice || 'Creates three investor-friendly versions without hiding repair facts'}
                 </span>
+                {polishOptions.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                    gap: 12,
+                    marginTop: 14
+                  }}>
+                    {polishOptions.map((option) => {
+                      const selected = selectedPolishOption === option.id;
+                      return (
+                        <div key={option.id} style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 8,
+                          padding: 14,
+                          border: selected ? '2px solid #00b894' : '1px solid #ddd',
+                          borderRadius: 8,
+                          background: selected ? '#eefbf7' : '#fff'
+                        }}>
+                          <strong style={{ color: '#17172f' }}>{option.label}</strong>
+                          <span style={{ color: '#666', fontSize: 12, lineHeight: 1.45 }}>{option.description}</span>
+                          <p style={{ color: '#333', fontSize: 13, lineHeight: 1.55, margin: 0, flex: 1 }}>{option.text}</p>
+                          <button
+                            type="button"
+                            onClick={() => usePolishOption(option)}
+                            style={{
+                              background: selected ? '#17172f' : '#00b894',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '8px 12px',
+                              cursor: 'pointer',
+                              fontWeight: 600
+                            }}
+                          >
+                            {selected ? '✓ Selected' : 'Use This Version'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
