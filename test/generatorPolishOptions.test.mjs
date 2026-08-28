@@ -9,4 +9,5 @@ test('the generator lets staff choose among three buyer-friendly condition-note 
   assert.match(source, /Use This Version/);
   assert.match(source, /buildConditionNoteOptions/);
   assert.match(source, /polishOptions\.map/);
+  assert.match(source, /three relaxed versions/);
 });

@@ -190,15 +190,17 @@ test('buyer-friendly polish offers three distinct investor versions without drop
   const options = buildConditionNoteOptions(raw);
 
   assert.deepEqual(options.map((option) => option.id), ['balanced', 'value-add', 'direct']);
+  assert.deepEqual(options.map((option) => option.label), ['Option 1', 'Option 2', 'Option 3']);
   assert.equal(new Set(options.map((option) => option.text)).size, 3);
+  assert.equal(options[0].text, 'Good value-add opportunity with a new roof already in place. The home could use a general refresh, and the plumbing may need attention due to poly piping. There is also some ceiling/drywall repair, along with updates to the windows and garage doors. HVAC details are still being confirmed.');
   for (const option of options) {
     assert.match(option.text, /poly piping/);
-    assert.match(option.text, /ceiling water damage/);
-    assert.match(option.text, /cosmetic updates/i);
-    assert.match(option.text, /windows and garage doors need replacement/i);
-    assert.match(option.text, /HVAC condition was not provided and should be verified/);
-    assert.match(option.text, /The roof is new/);
-    assert.doesNotMatch(option.text, /heavy rehab|definitely|not mentioned in the script/i);
+    assert.match(option.text, /ceiling\/drywall repair/i);
+    assert.match(option.text, /general refresh/i);
+    assert.match(option.text, /windows and garage doors/i);
+    assert.match(option.text, /HVAC details are still being confirmed/);
+    assert.match(option.text, /new roof|roof is already in place/i);
+    assert.doesNotMatch(option.text, /agent|heavy rehab|definitely|not mentioned in the script|complete plumbing replacement is needed|documented improvement scope|buyer due diligence/i);
   }
 });
 

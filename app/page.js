@@ -571,7 +571,7 @@ export default function OMDGenerator() {
                   {polishingNotes ? 'Creating options...' : '✨ Create Buyer-Friendly Options'}
                 </button>
                 <span style={{ marginLeft: 10, fontSize: 12, color: polishNotice ? '#116149' : '#888' }}>
-                  {polishNotice || 'Creates three investor-friendly versions without hiding repair facts'}
+                  {polishNotice || 'Creates three relaxed versions without hiding the reported property details'}
                 </span>
                 {polishOptions.length > 0 && (
                   <div style={{
