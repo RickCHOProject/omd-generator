@@ -138,6 +138,21 @@ Phone 9803511529`);
   assert.equal(deal.conditionNotes, 'HVAC and water heater need review. Kitchen needs a full refresh.');
 });
 
+test('ARV on the line before Beds can never become the bedroom count', () => {
+  const deal = parseDealInput(`Address: 5296 Purslane Way, Acworth, GA 30102
+Asking Price: $329,900
+ARV: $550,000
+Beds: 4
+Baths: 2.5
+Sqft: 3,000
+Year Built: 1989`);
+
+  assert.equal(deal.arv, '550000');
+  assert.equal(deal.beds, '4');
+  assert.equal(deal.baths, '2.5');
+  assert.notEqual(deal.beds, deal.arv);
+});
+
 test('parsing a new deal resets absent values instead of keeping stale facts', () => {
   const first = parseDealInput('Address: 1 Main St, Raleigh, NC 27601\nAsking: $100,000');
   const second = parseDealInput('Address: 2 Oak Ave');
