@@ -462,7 +462,21 @@ export default function OMDGenerator() {
               <HouseIcon />
               <span style={{ fontWeight: 700, fontSize: 18 }}>OMD Generator</span>
             </div>
-            <span style={{ background: '#00b894', padding: '4px 12px', borderRadius: 20, fontSize: 12 }}>Exclusive Deal</span>
+            <a
+              href="/admin"
+              style={{
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.45)',
+                padding: '8px 14px',
+                borderRadius: 8,
+                textDecoration: 'none',
+                fontSize: 13,
+                fontWeight: 700,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ← Back to Admin
+            </a>
           </div>
 
           <div style={{ background: 'white', padding: 30, borderRadius: '0 0 12px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
