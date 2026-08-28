@@ -166,6 +166,25 @@ test('polish still cleans rough field notes', () => {
   assert.equal(polished, 'HVAC is 15 years and is operational. Roof replaced 2019. Kitchen needs work cabinets need replacement no dishwasher.');
 });
 
+test('polish removes loaded rehab labels while preserving every concrete repair fact', () => {
+  const polished = polishConditionNotes('Heavy rehab. The house needs a complete plumbing replacement due to poly piping and ceiling water damage (drywall torn back in family room under master bath). It also needs a lot of cosmetic updates, and the windows and garage doors definitely need to be replaced. HVAC: Not mentioned in the script. Roof: New roof.');
+
+  assert.doesNotMatch(polished, /heavy rehab|definitely|not mentioned in the script/i);
+  assert.match(polished, /Complete plumbing replacement is needed due to poly piping/);
+  assert.match(polished, /ceiling water damage \(drywall opened in family room beneath the primary bathroom\)/);
+  assert.match(polished, /Cosmetic updates are also needed/);
+  assert.match(polished, /windows and garage doors need replacement/);
+  assert.match(polished, /HVAC condition was not provided and should be verified/);
+  assert.match(polished, /The roof is new/);
+});
+
+test('polish replaces blunt and uncertain system descriptions with professional language', () => {
+  const polished = polishConditionNotes('Roof: On its last leg. Water heater: Should be fine.');
+
+  assert.equal(polished, 'The roof shows signs of age and should be evaluated; replacement may be needed. Water heater condition was not confirmed and should be verified.');
+  assert.doesNotMatch(polished, /last leg|should be fine/i);
+});
+
 test('extractTextBlastPhotoLink reads the dedicated Google Drive field', () => {
   assert.equal(
     extractTextBlastPhotoLink('Google Drive Photo Link: https://drive.google.com/drive/folders/abc123'),
