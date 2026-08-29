@@ -26,7 +26,9 @@ test('a saved deal can always rebuild its text and Facebook packages', () => {
   assert.match(output.textBlast, /https:\/\/drive\.google\.com\/drive\/folders\/example/);
   assert.match(output.textBlast, /https:\/\/deals\.offmarketdaily\.com\/d\/101-test-lane-abcd/);
   assert.match(output.facebookPost, /470-664-5752/);
-  assert.match(output.facebookPost, /https:\/\/deals\.offmarketdaily\.com\/d\/101-test-lane-abcd/);
+  assert.match(output.facebookPost, /send me a message/i);
+  assert.doesNotMatch(output.facebookPost, /https?:\/\//);
+  assert.match(output.messengerReply, /https:\/\/deals\.offmarketdaily\.com\/d\/101-test-lane-abcd/);
 });
 
 test('older deals without saved marketing settings remain usable', () => {
@@ -44,4 +46,5 @@ test('saved marketing copy replaces an unapproved legacy phone from the state ma
 
   assert.match(output.facebookPost, /470-664-5752/);
   assert.doesNotMatch(output.facebookPost, /999-999-9999/);
+  assert.match(output.messengerReply, /https:\/\/deals\.offmarketdaily\.com\/d\/101-test-lane-abcd/);
 });

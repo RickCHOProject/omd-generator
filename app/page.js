@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
+import { buildFacebookPost, buildMessengerReply, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
 import { buildConditionNoteOptions, EMPTY_DEAL, extractTextBlastPhotoLink, getMissingDealFields, parseDealInput } from '../lib/dealParser.mjs';
 import { buildPublishedDealRecord, buildTrackingOnlyDealRecord } from '../lib/dealRecord.mjs';
 import { buildTextBlast } from '../lib/textBlast.mjs';
@@ -328,9 +328,10 @@ export default function OMDGenerator() {
   });
 
   const generateFacebookPost = () => buildFacebookPost(formData, {
-    variantIndex: getFacebookVariantIndex(formData) + facebookVariantOffset,
-    dealUrl
+    variantIndex: getFacebookVariantIndex(formData) + facebookVariantOffset
   });
+
+  const generateMessengerReply = () => buildMessengerReply(dealUrl);
 
   const generateEmailHTML = () => {
     return safeHtmlTemplate`<!DOCTYPE html>
@@ -1196,6 +1197,7 @@ export default function OMDGenerator() {
   // FACEBOOK POST PREVIEW
   if (previewMode === 'facebook') {
     const facebookPost = generateFacebookPost();
+    const messengerReply = generateMessengerReply();
     return (
       <div style={{ minHeight: '100vh', background: '#eef1f6', padding: 20 }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -1208,12 +1210,6 @@ export default function OMDGenerator() {
             <p style={{ margin: '0 0 18px', color: '#68707d', lineHeight: 1.5 }}>
               This caption uses the same deal information already entered in the generator. Refreshing changes the wording, not the facts.
             </p>
-
-            {!dealUrl && (
-              <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: '#fff6df', color: '#795500', fontSize: 14 }}>
-                Publish the OMD page first. The live deal link will then be added automatically.
-              </div>
-            )}
 
             <div style={{ padding: 20, borderRadius: 10, background: '#f7f8fa', border: '1px solid #e1e4e9', whiteSpace: 'pre-wrap', fontFamily: 'Arial, sans-serif', fontSize: 15, lineHeight: 1.6, color: '#242933' }}>
               {facebookPost}
@@ -1228,10 +1224,26 @@ export default function OMDGenerator() {
               </button>
               <button
                 onClick={() => copyToClipboard(facebookPost)}
-                disabled={!dealUrl}
-                style={{ background: dealUrl ? '#1877f2' : '#aeb7c6', color: 'white', border: 'none', padding: 14, borderRadius: 8, cursor: dealUrl ? 'pointer' : 'not-allowed', fontWeight: 700 }}
+                style={{ background: '#1877f2', color: 'white', border: 'none', padding: 14, borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}
               >
                 Copy Facebook Post
+              </button>
+            </div>
+
+            <div style={{ borderTop: '1px solid #e1e4e9', marginTop: 24, paddingTop: 22 }}>
+              <h2 style={{ margin: '0 0 6px', color: '#1a1a2e', fontSize: 20 }}>Messenger Reply</h2>
+              <p style={{ margin: '0 0 12px', color: '#68707d', lineHeight: 1.5 }}>
+                Send this privately after a buyer messages you. It includes the branded OMD deal link.
+              </p>
+              <div style={{ padding: 20, borderRadius: 10, background: '#f7f8fa', border: '1px solid #e1e4e9', whiteSpace: 'pre-wrap', fontFamily: 'Arial, sans-serif', fontSize: 15, lineHeight: 1.6, color: '#242933' }}>
+                {messengerReply}
+              </div>
+              <button
+                onClick={() => copyToClipboard(messengerReply)}
+                disabled={!dealUrl}
+                style={{ width: '100%', marginTop: 10, background: dealUrl ? '#1a1a2e' : '#aeb7c6', color: 'white', border: 'none', padding: 14, borderRadius: 8, cursor: dealUrl ? 'pointer' : 'not-allowed', fontWeight: 700 }}
+              >
+                Copy Messenger Reply
               </button>
             </div>
           </section>

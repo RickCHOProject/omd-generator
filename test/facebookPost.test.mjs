@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildFacebookPost, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
+import { buildFacebookPost, buildMessengerReply, FACEBOOK_VARIANT_COUNT, getFacebookVariantIndex } from '../lib/facebookPost.mjs';
 
 const sampleDeal = {
   address: '2202 Van Wert St',
@@ -28,7 +28,8 @@ test('every Facebook variation preserves the important deal facts', () => {
     assert.match(post, /\$134,000/);
     assert.match(post, /\$220,000/);
     assert.match(post, /980-351-1529/);
-    assert.match(post, /https:\/\/deals\.offmarketdaily\.com\/d\/2202-van-wert-st-hc0j/);
+    assert.match(post, /send me a message/i);
+    assert.doesNotMatch(post, /https?:\/\//);
     assert.doesNotMatch(post, /2202 Van Wert St/);
   }
 });
@@ -48,9 +49,19 @@ test('refreshing produces genuinely different openings and ordering', () => {
   assert.equal(new Set(posts).size, FACEBOOK_VARIANT_COUNT);
 });
 
-test('an unpublished deal explains that the live link is still pending', () => {
+test('an unpublished Facebook post remains ready to copy without a link', () => {
   const post = buildFacebookPost(sampleDeal, { variantIndex: 0 });
-  assert.match(post, /link will be added automatically after the property is published/i);
+  assert.match(post, /send me a message/i);
+  assert.doesNotMatch(post, /link will be added/i);
+});
+
+test('the Messenger reply carries the branded deal link instead of the public post', () => {
+  const reply = buildMessengerReply(dealUrl);
+  assert.match(reply, /Here you go/);
+  assert.match(reply, /https:\/\/deals\.offmarketdaily\.com\/d\/2202-van-wert-st-hc0j/);
+
+  const pendingReply = buildMessengerReply('');
+  assert.match(pendingReply, /Publish the OMD page first/i);
 });
 
 test('the default wording can rotate automatically from one deal to another', () => {
