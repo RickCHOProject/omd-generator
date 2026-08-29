@@ -20,6 +20,8 @@ test('Admin keeps marketing copy available after publishing', async () => {
   assert.match(source, /Marketing Package/);
   assert.match(source, /Copy Text Blast/);
   assert.match(source, /Copy Facebook Post/);
+  assert.match(source, /Copy Messenger Reply/);
+  assert.match(source, /packageOutput\.messengerReply/);
   assert.match(source, /openMarketingPackage\(deal\)/);
   assert.match(source, /getPhoneChoicesForState\(editData\.state\)/);
   assert.match(source, /draggable/);

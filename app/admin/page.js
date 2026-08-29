@@ -679,7 +679,7 @@ export default function AdminPage() {
           <section style={{ background: 'white', borderRadius: 14, padding: 22, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', marginBottom: 16 }}>
             <h1 style={{ color: '#1a1a2e', fontSize: 24, margin: '0 0 6px' }}>{marketingDeal.data?.address}</h1>
             <p style={{ color: '#667085', margin: '0 0 18px', lineHeight: 1.5 }}>
-              Return here anytime to copy the live link, Text Blast, or Facebook post. You do not need to save these in another document.
+              Return here anytime to copy the live link, Text Blast, Facebook post, or Messenger reply. You do not need to save these in another document.
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <a href={packageOutput.dealUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '10px 16px', background: '#f8fafc', color: '#344054', border: '1px solid #d0d5dd', borderRadius: 8, textDecoration: 'none', fontWeight: 700 }}>View OMD Page</a>
@@ -729,6 +729,12 @@ export default function AdminPage() {
                 >
                   Refresh
                 </button>
+              </div>
+              <div style={{ borderTop: '1px solid #e4e7ec', marginTop: 20, paddingTop: 18 }}>
+                <h3 style={{ color: '#1a1a2e', fontSize: 17, margin: '0 0 6px' }}>Messenger Reply</h3>
+                <p style={{ color: '#667085', fontSize: 13, margin: '0 0 12px' }}>Send this privately when someone responds to the Facebook post.</p>
+                <textarea readOnly value={packageOutput.messengerReply} style={{ width: '100%', minHeight: 150, padding: 12, border: '1px solid #d0d5dd', borderRadius: 8, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.55 }} />
+                <button type="button" onClick={() => copyPackageText(packageOutput.messengerReply, 'Messenger reply')} style={{ width: '100%', marginTop: 10, padding: 11, background: '#1a1a2e', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>Copy Messenger Reply</button>
               </div>
             </section>
           </div>
