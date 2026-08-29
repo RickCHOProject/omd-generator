@@ -21,7 +21,7 @@ const deal = {
   conditionNotes: 'These notes must not appear in the text blast.'
 };
 
-test('text blast contains deal facts and the Google Drive photo link', () => {
+test('text blast contains deal facts and only the Google Drive photo link', () => {
   const output = buildTextBlast(deal, {
     dealUrl: 'https://deals.offmarketdaily.com/d/example',
     photoLink: 'https://drive.google.com/drive/folders/example'
@@ -30,7 +30,8 @@ test('text blast contains deal facts and the Google Drive photo link', () => {
   assert.match(output, /1160 Example Drive/);
   assert.match(output, /\$250,000/);
   assert.match(output, /1,543/);
-  assert.match(output, /Deal Link: https:\/\/deals\.offmarketdaily\.com\/d\/example/);
+  assert.doesNotMatch(output, /Deal Link:/);
+  assert.doesNotMatch(output, /deals\.offmarketdaily\.com/);
   assert.match(output, /Google Drive Photos: https:\/\/drive\.google\.com\/drive\/folders\/example/);
 });
 

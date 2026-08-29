@@ -24,7 +24,7 @@ test('a saved deal can always rebuild its text and Facebook packages', () => {
 
   assert.equal(output.dealUrl, 'https://deals.offmarketdaily.com/d/101-test-lane-abcd');
   assert.match(output.textBlast, /https:\/\/drive\.google\.com\/drive\/folders\/example/);
-  assert.match(output.textBlast, /https:\/\/deals\.offmarketdaily\.com\/d\/101-test-lane-abcd/);
+  assert.doesNotMatch(output.textBlast, /deals\.offmarketdaily\.com/);
   assert.match(output.facebookPost, /470-664-5752/);
   assert.match(output.facebookPost, /send me a message/i);
   assert.doesNotMatch(output.facebookPost, /https?:\/\//);
