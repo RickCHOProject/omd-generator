@@ -69,6 +69,8 @@ test('buyer page uses same-origin server endpoints instead of direct database ac
 
   assert.match(pageSource, /\/api\/public\/deals\//);
   assert.match(pageSource, /\/api\/public\/leads/);
+  assert.match(pageSource, /getApprovedPhoneForState\(deal\.state, deal\.phone\)/);
+  assert.doesNotMatch(pageSource, /480-266-3864/);
   assert.doesNotMatch(pageSource, /supabase\.co\/rest\/v1/);
   assert.doesNotMatch(layoutSource, /supabase\.co\/rest\/v1/);
 });

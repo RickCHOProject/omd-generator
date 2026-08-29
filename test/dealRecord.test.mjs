@@ -15,6 +15,10 @@ test('published records keep the full package and receive a public status', () =
   const record = buildPublishedDealRecord({
     formData: { address: '2202 Van Wert St', askingPrice: '134000' },
     photos: [{ url: 'https://example.com/photo.jpg', label: 'Exterior' }],
+    marketing: {
+      textBlastPhotoLink: ' https://drive.google.com/example ',
+      facebookVariantOffset: 2
+    },
     suffix: 'abcd'
   });
 
@@ -22,6 +26,10 @@ test('published records keep the full package and receive a public status', () =
   assert.equal(record.data.omdStatus, DEAL_STATUS.PUBLISHED);
   assert.equal(record.data.askingPrice, '134000');
   assert.equal(record.data.photos.length, 1);
+  assert.deepEqual(record.data.marketing, {
+    textBlastPhotoLink: 'https://drive.google.com/example',
+    facebookVariantOffset: 2
+  });
   assert.equal(isPublicDeal(record.data), true);
 });
 
